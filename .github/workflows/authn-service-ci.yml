@@ -50,7 +50,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: test-results
-          path: target/surefire-reports/
+          path: authn-service/target/surefire-reports/
 
       - name: Clean up
         if: always()
