@@ -1,8 +1,9 @@
-name: CI
+name: Authn Service
 
 on:
   pull_request:
     paths:
+      - '.github/workflows/authn-service.yml'
       - 'authn-service/**'
 
 jobs:
