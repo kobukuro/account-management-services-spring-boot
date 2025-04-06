@@ -1,0 +1,43 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/devdb
+    username: devuser
+    password: changeme
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    baseline-on-migrate: true # Set this to true, so it can work properly even if the flyway_schema_history table does not exist and the database is not empty.
+    enabled: true
+    baseline-version: 1 # When the existing database is not empty, the current version will be set to this value.
+  config:
+    import: optional:file:.env[.properties]
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    name: ${MAIL_NAME}
+    properties:
+      mail:
+        from: ${MAIL_FROM}
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  thymeleaf:
+    prefix: classpath:/templates/
+    suffix: .html
+    cache: false
+    mode: HTML
+    encoding: UTF-8
+secret-key: ${SECRET_KEY}
+jwt:
+  verification:
+    expiration: ${VERIFICATION_TOKEN_EXPIRATION_MILLISECONDS}
+frontend-url: ${FRONTEND_URL}
+app-name: ${APP_NAME}

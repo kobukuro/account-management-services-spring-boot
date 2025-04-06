@@ -1,0 +1,57 @@
+name: CI
+
+on:
+  pull_request:
+    paths:
+      - 'authn-service/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    env:
+      VERIFICATION_TOKEN_EXPIRATION_MILLISECONDS: ${{ secrets.VERIFICATION_TOKEN_EXPIRATION_MILLISECONDS }}
+
+    defaults:
+      run:
+        working-directory: ./authn-service
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Start database with Docker Compose
+        run: docker compose -f docker-compose-ci.yml up -d
+
+      - name: Wait for database to be ready
+        run: |
+          timeout=30
+          until docker compose exec -T db pg_isready || [ $timeout -le 0 ]; do
+            echo "Waiting for PostgreSQL..."
+            sleep 1
+            ((timeout--))
+          done
+          if [ $timeout -le 0 ]; then
+            echo "Timed out waiting for PostgreSQL"
+            exit 1
+          fi
+
+      - name: Build and Test
+        run: mvn -B verify
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: target/surefire-reports/
+
+      - name: Clean up
+        if: always()
+        run: docker compose down

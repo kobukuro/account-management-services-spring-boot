@@ -1,0 +1,5 @@
+spring:
+  application:
+    name: authn-service
+  profiles:
+    active: @profiles.active@
