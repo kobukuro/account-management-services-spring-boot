@@ -1,0 +1,7 @@
+services:
+  db:
+    extends:
+      file: docker-compose.yml
+      service: db
+    volumes:
+      - ./init-test-db.sh:/docker-entrypoint-initdb.d/init-test-db.sh
