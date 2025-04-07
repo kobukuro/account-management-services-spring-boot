@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: api-gateway
+  config:
+    import: optional:file:.env[.properties]
+  cloud:
+    gateway:
+      routes:
+        - id: authn-service
+          uri: ${AUTHN_URI}
+          predicates:
+            - Path=/api/v1/users/**
+server:
+  port: 8000
