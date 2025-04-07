@@ -57,7 +57,7 @@ public class UserServiceImpl implements UserService {
         emailService.sendHtmlEmail(
                 email,
                 "Account activation on " + appName, // email subject
-                "templates/email/verification-email",  // Thymeleaf template name
+                "email/verification-email",  // Thymeleaf template name
                 templateModel
         );
         String hashedPassword = BCrypt.hashpw(request.password(), BCrypt.gensalt());
