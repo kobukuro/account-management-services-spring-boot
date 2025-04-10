@@ -6,9 +6,32 @@ spring:
   cloud:
     gateway:
       routes:
-        - id: authn-service
+        - id: register-route
           uri: ${AUTHN_URI}
           predicates:
-            - Path=/api/v1/users/**
+            - Path=/api/v1/users
+            - Method=POST
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 2  # requests per second
+                redis-rate-limiter.burstCapacity: 4  # maximum requests can be done in parallel
+                key-resolver: "#{@ipKeyResolver}"
+        - id: activation-route
+          uri: ${AUTHN_URI}
+          predicates:
+              - Path=/api/v1/users/activation
+          filters:
+              - name: RequestRateLimiter
+                args:
+                    redis-rate-limiter.replenishRate: 1  # requests per second
+                    redis-rate-limiter.burstCapacity: 2  # maximum requests can be done in parallel
+                    key-resolver: "#{@ipKeyResolver}"
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ${REDIS_PASSWORD}
 server:
   port: 8000
