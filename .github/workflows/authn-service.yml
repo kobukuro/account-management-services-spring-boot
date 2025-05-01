@@ -43,6 +43,9 @@ jobs:
             exit 1
           fi
 
+      - name: Debug Kafka logs (Pre-check)
+        run: docker compose logs kafka --tail=50
+
       - name: Wait for Kafka to be ready
         run: |
           timeout=1800
