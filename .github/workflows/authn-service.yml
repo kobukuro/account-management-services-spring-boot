@@ -45,7 +45,7 @@ jobs:
 
       - name: Wait for Kafka to be ready
         run: |
-          timeout=600
+          timeout=1800
           until docker compose exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list || [ $timeout -le 0 ]; do
             echo "Waiting for Kafka..."
             sleep 1
