@@ -43,6 +43,19 @@ jobs:
             exit 1
           fi
 
+      - name: Wait for Kafka to be ready
+        run: |
+          timeout=30
+          until docker compose exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list || [ $timeout -le 0 ]; do
+            echo "Waiting for Kafka..."
+            sleep 1
+            ((timeout--))
+          done
+          if [ $timeout -le 0 ]; then
+            echo "Timed out waiting for Kafka"
+            exit 1
+          fi
+
       - name: Build and Test
         run: mvn -B verify
 
