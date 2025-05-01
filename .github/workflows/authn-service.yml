@@ -44,7 +44,7 @@ jobs:
           fi
 
       - name: Debug Kafka logs (Pre-check)
-        run: docker compose logs kafka --tail=50
+        run: docker compose logs kafka
 
       - name: Wait for Kafka to be ready
         run: |
