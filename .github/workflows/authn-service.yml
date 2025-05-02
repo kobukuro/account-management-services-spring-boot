@@ -27,7 +27,7 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Start database with Docker Compose
+      - name: Start Docker Compose
         run: docker compose -f docker-compose-ci.yml up -d
 
       - name: Wait for database to be ready
@@ -40,23 +40,6 @@ jobs:
           done
           if [ $timeout -le 0 ]; then
             echo "Timed out waiting for PostgreSQL"
-            exit 1
-          fi
-
-      - name: Debug Kafka logs (Pre-check)
-        run: docker compose logs kafka
-
-      - name: Wait for Kafka to be ready
-        run: |
-          timeout=180
-          until nc -z kafka 9092 || [ $timeout -le 0 ]; do
-            echo "Waiting for Kafka 9092..."
-            sleep 1
-            ((timeout--))
-          done
-          if [ $timeout -le 0 ]; then
-            echo "Timed out waiting for Kafka"
-            docker compose logs kafka
             exit 1
           fi
 
