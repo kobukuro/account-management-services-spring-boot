@@ -56,6 +56,7 @@ jobs:
           done
           if [ $timeout -le 0 ]; then
             echo "Timed out waiting for Kafka"
+            docker compose logs kafka
             exit 1
           fi
 
