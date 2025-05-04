@@ -32,4 +32,7 @@ services:
       CLUSTER_ID: "1"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-      - ./data:/var/lib/kafka/data
+      - kafka_data:/var/lib/kafka/data
+    user: "appuser:appuser"
+volumes:
+  kafka_data:

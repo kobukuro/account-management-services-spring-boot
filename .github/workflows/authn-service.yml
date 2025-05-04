@@ -27,6 +27,12 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Create and set permissions for Kafka data directory
+        run: |
+          mkdir -p ./data
+          sudo chown 1000:1000 ./data
+          sudo chmod 777 ./data
+
       - name: Start Docker Compose
         run: docker compose -f docker-compose-ci.yml up -d
 
