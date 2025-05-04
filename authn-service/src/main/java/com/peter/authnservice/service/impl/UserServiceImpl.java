@@ -2,27 +2,28 @@ package com.peter.authnservice.service.impl;
 
 import com.peter.authnservice.domain.dto.UserRegistrationRequest;
 import com.peter.authnservice.domain.entity.AppUser;
+import com.peter.authnservice.domain.event.Email;
+import com.peter.authnservice.domain.event.UserDetails;
+import com.peter.authnservice.domain.event.UserRegistrationEvent;
 import com.peter.authnservice.exception.EmailAlreadyExistsException;
 import com.peter.authnservice.exception.EmailAlreadyVerifiedException;
 import com.peter.authnservice.exception.EmailNotFoundException;
 import com.peter.authnservice.exception.TokenNotValidException;
 import com.peter.authnservice.repository.UserRepository;
-import com.peter.authnservice.service.EmailService;
 import com.peter.authnservice.service.UserService;
 import com.peter.authnservice.util.JwtUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
 import java.util.Map;
 
 @Service
 @Transactional // Utilize Spring's transaction management to roll back the transaction if an exception occurs
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
-    private final EmailService emailService;
     private final JwtUtils jwtUtils;
     @Value("${app-name}")
     private String appName;
@@ -30,11 +31,12 @@ public class UserServiceImpl implements UserService {
     private long verificationTokenExpirationInMilliseconds;
     @Value("${frontend-url}")
     private String frontendUrl;
+    private final KafkaTemplate<String, UserRegistrationEvent> kafkaTemplate;
 
-    public UserServiceImpl(UserRepository userRepository, EmailService emailService, JwtUtils jwtUtils) {
+    public UserServiceImpl(UserRepository userRepository, JwtUtils jwtUtils, KafkaTemplate<String, UserRegistrationEvent> kafkaTemplate) {
         this.userRepository = userRepository;
-        this.emailService = emailService;
         this.jwtUtils = jwtUtils;
+        this.kafkaTemplate = kafkaTemplate;
     }
 
     @Override
@@ -45,21 +47,20 @@ public class UserServiceImpl implements UserService {
         if (userRepository.existsByEmail(email)) {
             throw new EmailAlreadyExistsException("This email has been registered.");
         }
-        String verificationToken = jwtUtils.generateVerificationToken(email);
-        String verificationLink = frontendUrl + "/activate?token=" + verificationToken;
-        int verificationTokenExpirationInHours = (int) (verificationTokenExpirationInMilliseconds / 3600000);
-        Map<String, Object> templateModel = new HashMap<>();
-        templateModel.put("appName", appName);
-        templateModel.put("firstName", firstName);
-        templateModel.put("lastName", lastName);
-        templateModel.put("verificationLink", verificationLink);
-        templateModel.put("expirationHours", verificationTokenExpirationInHours);
-        emailService.sendHtmlEmail(
-                email,
-                "Account activation on " + appName, // email subject
-                "email/verification-email",  // Thymeleaf template name
-                templateModel
+        UserRegistrationEvent userRegistrationEvent = new UserRegistrationEvent(
+                new UserDetails(firstName, lastName, email),
+                new Email("Account activation on " + appName,
+                        "email/verification-email",
+                        Map.of(
+                                "appName", appName,
+                                "firstName", firstName,
+                                "lastName", lastName,
+                                "verificationLink", frontendUrl + "/activate?token=" + jwtUtils.generateVerificationToken(email),
+                                "expirationHours", verificationTokenExpirationInMilliseconds / 3600000
+                        )
+                )
         );
+        kafkaTemplate.send("user_registration", userRegistrationEvent);
         String hashedPassword = BCrypt.hashpw(request.password(), BCrypt.gensalt());
         return userRepository.save(new AppUser(firstName, lastName, email,
                 hashedPassword, false));

@@ -4,18 +4,31 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.peter.authnservice.domain.dto.UserActivationRequest;
 import com.peter.authnservice.domain.dto.UserRegistrationRequest;
 import com.peter.authnservice.domain.entity.AppUser;
+import com.peter.authnservice.domain.event.UserRegistrationEvent;
 import com.peter.authnservice.repository.UserRepository;
 import com.peter.authnservice.util.JwtUtils;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.serialization.StringDeserializer;
 import org.flywaydb.core.Flyway;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.kafka.core.ConsumerFactory;
+import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
+import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+
+import java.time.Duration;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -29,6 +42,7 @@ public class UserRegistrationIntegrationTest {
 
     private static final String REGISTER_API_PATH = "/api/v1/users";
     private static final String ACTIVATION_API_PATH = "/api/v1/users/activation";
+    private static final String KAFKA_TOPIC = "user_registration";
 
     @Autowired
     private MockMvc mockMvc;
@@ -45,10 +59,37 @@ public class UserRegistrationIntegrationTest {
     @Autowired
     private Flyway flyway;
 
+    private static Consumer<String, UserRegistrationEvent> consumer;
+
     private UserRegistrationRequest validRequest;
     private String firstName;
     private String lastName;
     private String testEmail;
+
+    @Value("${app-name}")
+    private String appName;
+
+    @Value("${jwt.verification.expiration}")
+    private long verificationTokenExpirationInMilliseconds;
+
+    @BeforeAll
+    static void setupKafkaConsumer() {
+        Map<String, Object> consumerProps = new HashMap<>();
+        consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
+        consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group");
+        consumerProps.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        consumerProps.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
+        consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
+        consumerProps.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
+
+        ConsumerFactory<String, UserRegistrationEvent> consumerFactory =
+                new DefaultKafkaConsumerFactory<>(consumerProps,
+                        new StringDeserializer(),
+                        new JsonDeserializer<>(UserRegistrationEvent.class, false));
+
+        consumer = consumerFactory.createConsumer();
+        consumer.subscribe(Collections.singletonList(KAFKA_TOPIC));
+    }
 
     @BeforeEach
     void setUp() {
@@ -65,6 +106,8 @@ public class UserRegistrationIntegrationTest {
         // Reset database before each test
         flyway.clean();
         flyway.migrate();
+
+        consumer.poll(Duration.ofMillis(100));
     }
 
     @AfterEach
@@ -72,11 +115,18 @@ public class UserRegistrationIntegrationTest {
         userRepository.deleteAll();
     }
 
+    @AfterAll
+    static void tearDown() {
+        if (consumer != null) {
+            consumer.close();
+        }
+    }
+
     /**
      * Test normal registration flow
      */
     @Test
-    void whenValidInput_thenReturns201() throws Exception {
+    void whenValidInput_thenReturns201AndSendsKafkaMessage() throws Exception {
         mockMvc.perform(post(REGISTER_API_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest)))
@@ -84,6 +134,25 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(jsonPath("$.email").value(validRequest.email()));
 
         assertTrue(userRepository.findByEmail(validRequest.email()).isPresent());
+
+        ConsumerRecords<String, UserRegistrationEvent> records =
+                consumer.poll(Duration.ofSeconds(5));
+        assertFalse(records.isEmpty());
+
+        ConsumerRecord<String, UserRegistrationEvent> record = records.iterator().next();
+        UserRegistrationEvent event = record.value();
+        assertEquals(testEmail, event.userDetails().email());
+        assertEquals(firstName, event.userDetails().firstName());
+        assertEquals(lastName, event.userDetails().lastName());
+        assertEquals("Account activation on " + appName,
+                event.email().subject());
+        assertEquals("email/verification-email", event.email().templateName());
+        assertEquals(appName, event.email().model().get("appName"));
+        assertEquals(firstName, event.email().model().get("firstName"));
+        assertEquals(lastName, event.email().model().get("lastName"));
+        Long expectedHours = verificationTokenExpirationInMilliseconds / 3600000L;
+        Long actualHours = Long.valueOf(event.email().model().get("expirationHours").toString());
+        assertEquals(expectedHours, actualHours);
     }
 
     /**
@@ -104,6 +173,10 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
+
+        ConsumerRecords<String, UserRegistrationEvent> records =
+                consumer.poll(Duration.ofSeconds(5));
+        assertTrue(records.isEmpty());
     }
 
     /**
@@ -124,6 +197,10 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
+
+        ConsumerRecords<String, UserRegistrationEvent> records =
+                consumer.poll(Duration.ofSeconds(5));
+        assertTrue(records.isEmpty());
     }
 
     /**
@@ -144,6 +221,10 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertFalse(userRepository.findByEmail(invalidRequest.email()).isPresent());
+
+        ConsumerRecords<String, UserRegistrationEvent> records =
+                consumer.poll(Duration.ofSeconds(5));
+        assertTrue(records.isEmpty());
     }
 
     /**
@@ -157,11 +238,19 @@ public class UserRegistrationIntegrationTest {
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isCreated());
 
+        ConsumerRecords<String, UserRegistrationEvent> firstRecords =
+                consumer.poll(Duration.ofSeconds(5));
+        assertFalse(firstRecords.isEmpty());
+
         // Attempt to register with the same email again
         mockMvc.perform(post(REGISTER_API_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isConflict());
+
+        ConsumerRecords<String, UserRegistrationEvent> secondRecords =
+                consumer.poll(Duration.ofSeconds(5));
+        assertTrue(secondRecords.isEmpty());
 
         assertEquals(1, userRepository.count());
     }
@@ -184,6 +273,10 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
+
+        ConsumerRecords<String, UserRegistrationEvent> records =
+                consumer.poll(Duration.ofSeconds(5));
+        assertTrue(records.isEmpty());
     }
 
     /**
@@ -204,6 +297,10 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
+
+        ConsumerRecords<String, UserRegistrationEvent> records =
+                consumer.poll(Duration.ofSeconds(5));
+        assertTrue(records.isEmpty());
     }
 
     /**
