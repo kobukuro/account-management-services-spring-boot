@@ -9,3 +9,5 @@ services:
     extends:
       file: docker-compose.yml
       service: kafka
+volumes:
+  kafka_data:
