@@ -27,12 +27,6 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Create and set permissions for Kafka data directory
-        run: |
-          mkdir -p ./data
-          sudo chown 1000:1000 ./data
-          sudo chmod 777 ./data
-
       - name: Start Docker Compose
         run: docker compose -f docker-compose-ci.yml up -d
 
@@ -54,9 +48,9 @@ jobs:
           timeout=30
           until docker compose exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list || [ $timeout -le 0 ]; do
             echo "Waiting for Kafka..."
-            echo "Container Status:"
+            echo "Containers Status:"
             docker ps -a
-            echo "Container Logs:"
+            echo "Kafka Container Logs:"
             docker logs kafka
             sleep 1
             ((timeout--))
