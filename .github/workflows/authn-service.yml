@@ -43,30 +43,20 @@ jobs:
             exit 1
           fi
 
-      - name: Check the status of Docker containers
-        run: |
-          docker ps
-
       - name: Wait for Kafka to be ready
         run: |
-          attempt_counter=0
-          max_attempts=12
-
-          until docker exec kafka bash -c "kafka-topics --bootstrap-server localhost:9092 --list" || [ $attempt_counter -eq $max_attempts ]
-          do
-            echo "Waiting for Kafka to be ready... (Attempt: $attempt_counter)"
-            attempt_counter=$(($attempt_counter+1))
-            sleep 10
-
+          timeout=30
+          until docker compose exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list || [ $timeout -le 0 ]; do
+            echo "Waiting for Kafka..."
             echo "Container Status:"
             docker ps -a
-
             echo "Container Logs:"
             docker logs kafka
+            sleep 1
+            ((timeout--))
           done
-
-          if [ $attempt_counter -eq $max_attempts ]; then
-            echo "Max attempts reached. Kafka failed to start."
+          if [ $timeout -le 0 ]; then
+            echo "Timed out waiting for Kafka"
             exit 1
           fi
 
