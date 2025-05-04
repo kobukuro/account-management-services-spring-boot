@@ -43,6 +43,10 @@ jobs:
             exit 1
           fi
 
+      - name: Check the status of Docker containers
+        run: |
+          docker compose ps
+
       - name: Wait for Kafka to be ready
         run: |
           timeout=30
