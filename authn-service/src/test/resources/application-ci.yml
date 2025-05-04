@@ -18,6 +18,13 @@ spring:
     clean-disabled: false  # Allow database cleanup in test environment
   config:
     import: optional:file:.env[.properties]
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.type.mapping: event:com.peter.authnservice.domain.event.UserRegistrationEvent
 secret-key: "test-secret-key-for-ci-environment"
 jwt:
   verification:
