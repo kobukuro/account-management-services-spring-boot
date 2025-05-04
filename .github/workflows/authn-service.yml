@@ -45,7 +45,7 @@ jobs:
 
       - name: Check the status of Docker containers
         run: |
-          docker compose ps
+          docker ps
 
       - name: Wait for Kafka to be ready
         run: |
