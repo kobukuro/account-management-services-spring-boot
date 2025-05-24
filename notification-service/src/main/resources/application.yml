@@ -12,6 +12,9 @@ spring:
           json:
             type:
               mapping: event:com.peter.notificationservice.domain.event.UserRegistrationEvent
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
   config:
     import: optional:file:.env[.properties]
   mail:
