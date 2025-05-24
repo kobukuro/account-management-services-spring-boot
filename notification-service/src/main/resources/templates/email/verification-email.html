@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Account Activation - ${appName}</title>
+</head>
+<body>
+<p>Dear <span th:text="${firstName}"></span> <span th:text="${lastName}"></span>,</p>
+<p>You're receiving this email because you need to finish activation process on <span th:text="${appName}"></span>.</p>
+<p>Please click the following link to activate your account:</p>
+<p>
+    <a th:href="${verificationLink}" th:text="${verificationLink}">Verification Link</a>
+</p>
+<p>This link will expire in <span th:text="${expirationHours}"></span> hours.</p>
+<p>Thanks for using our app!</p>
+<p>The <span th:text="${appName}"></span> team</p>
+</body>
+</html>
