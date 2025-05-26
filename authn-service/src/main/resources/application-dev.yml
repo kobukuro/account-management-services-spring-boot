@@ -16,25 +16,6 @@ spring:
     baseline-version: 1 # When the existing database is not empty, the current version will be set to this value.
   config:
     import: optional:file:.env[.properties]
-  mail:
-    host: ${MAIL_HOST}
-    port: ${MAIL_PORT}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
-    name: ${MAIL_NAME}
-    properties:
-      mail:
-        from: ${MAIL_FROM}
-        smtp:
-          auth: true
-          starttls:
-            enable: true
-  thymeleaf:
-    prefix: classpath:/templates/
-    suffix: .html
-    cache: false
-    mode: HTML
-    encoding: UTF-8
   kafka:
     bootstrap-servers: localhost:9092
     producer:
