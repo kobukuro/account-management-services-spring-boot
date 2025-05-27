@@ -29,3 +29,10 @@ jwt:
     expiration: ${VERIFICATION_TOKEN_EXPIRATION_MILLISECONDS}
 frontend-url: ${FRONTEND_URL}
 app-name: ${APP_NAME}
+springdoc:
+  api-docs:
+    enabled: true
+    path: /authn/v1/api-docs
+  swagger-ui:
+    enabled: true
+    path: /authn/swagger-ui.html

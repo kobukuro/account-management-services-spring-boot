@@ -53,3 +53,4 @@
    ```
    account-management-services-spring-boot\notification-service\src\main\java\com\peter\notificationservice\NotificationServiceApplication.java
    ```
+Then go to http://localhost:8000/swagger-ui.html to view the API documentation.
