@@ -13,7 +13,7 @@
 3. Run the required containers:
 
     ```
-        docker compose up -d
+    docker compose up -d
     ```
 4. Execute the main method of ApiGatewayApplication class located in the following path:
 
