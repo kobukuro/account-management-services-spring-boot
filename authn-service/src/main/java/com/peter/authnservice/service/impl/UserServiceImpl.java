@@ -1,6 +1,5 @@
 package com.peter.authnservice.service.impl;
 
-import com.peter.authnservice.domain.dto.UserRegistrationRequest;
 import com.peter.authnservice.domain.entity.AppUser;
 import com.peter.authnservice.domain.event.Email;
 import com.peter.authnservice.domain.event.UserDetails;
@@ -40,10 +39,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public AppUser register(UserRegistrationRequest request) {
-        String firstName = request.firstName();
-        String lastName = request.lastName();
-        String email = request.email();
+    public AppUser register(String firstName, String lastName, String email, String password) {
         if (userRepository.existsByEmail(email)) {
             throw new EmailAlreadyExistsException("This email has been registered.");
         }
@@ -61,7 +57,7 @@ public class UserServiceImpl implements UserService {
                 )
         );
         kafkaTemplate.send("user_registration", userRegistrationEvent);
-        String hashedPassword = BCrypt.hashpw(request.password(), BCrypt.gensalt());
+        String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
         return userRepository.save(new AppUser(firstName, lastName, email,
                 hashedPassword, false));
     }

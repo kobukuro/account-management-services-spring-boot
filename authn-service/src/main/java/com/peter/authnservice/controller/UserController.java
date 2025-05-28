@@ -54,7 +54,7 @@ public class UserController {
     @PostMapping
     // @Valid annotation is used to validate the request body
     public ResponseEntity<UserRegistrationResponse> register(@Valid @RequestBody UserRegistrationRequest request) {
-        AppUser registeredUser = userService.register(request);
+        AppUser registeredUser = userService.register(request.firstName(), request.lastName(), request.email(), request.password());
         UserRegistrationResponse response = new UserRegistrationResponse(
                 registeredUser.getId(),
                 registeredUser.getEmail(),
