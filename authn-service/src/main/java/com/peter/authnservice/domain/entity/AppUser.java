@@ -52,4 +52,8 @@ public class AppUser {
         this.password = password;
         this.enabled = enabled;
     }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
 }

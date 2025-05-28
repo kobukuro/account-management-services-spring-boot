@@ -1,13 +1,11 @@
 package com.peter.authnservice.service.impl;
 
+import com.peter.authnservice.domain.dto.TokenPair;
 import com.peter.authnservice.domain.entity.AppUser;
 import com.peter.authnservice.domain.event.Email;
 import com.peter.authnservice.domain.event.UserDetails;
 import com.peter.authnservice.domain.event.UserRegistrationEvent;
-import com.peter.authnservice.exception.EmailAlreadyExistsException;
-import com.peter.authnservice.exception.EmailAlreadyVerifiedException;
-import com.peter.authnservice.exception.EmailNotFoundException;
-import com.peter.authnservice.exception.TokenNotValidException;
+import com.peter.authnservice.exception.*;
 import com.peter.authnservice.repository.UserRepository;
 import com.peter.authnservice.service.UserService;
 import com.peter.authnservice.util.JwtUtils;
@@ -76,5 +74,21 @@ public class UserServiceImpl implements UserService {
         }
         user.setEnabled(true);
         userRepository.save(user);
+    }
+
+    @Override
+    public TokenPair login(String email, String password) {
+        AppUser user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new InvalidCredentialsException("Invalid credentials"));
+        if (!user.isEnabled()) {
+            throw new EmailNotVerifiedException("This email has not been verified.\nPlease check your email for the verification link.");
+        }
+        if (!BCrypt.checkpw(password, user.getPassword())) {
+            throw new InvalidCredentialsException("Invalid credentials");
+        }
+        Long userId = user.getId();
+        String accessToken = jwtUtils.generateAccessToken(userId);
+        String refreshToken = jwtUtils.generateRefreshToken(userId);
+        return new TokenPair(accessToken, refreshToken);
     }
 }
