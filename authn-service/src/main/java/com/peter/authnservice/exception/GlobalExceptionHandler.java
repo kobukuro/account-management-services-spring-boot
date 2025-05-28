@@ -7,12 +7,20 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
-    @ExceptionHandler({TokenNotValidException.class})
+    @ExceptionHandler({TokenNotValidException.class, InvalidCredentialsException.class})
     public ResponseEntity<ErrorResponse> handleUnauthorized(Exception ex) {
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage()
         );
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler({EmailNotVerifiedException.class})
+    public ResponseEntity<ErrorResponse> handleForbidden(Exception ex) {
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage()
+        );
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 
     @ExceptionHandler({EmailNotFoundException.class})

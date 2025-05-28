@@ -19,6 +19,12 @@ public class JwtUtils {
     @Value("${jwt.verification.expiration}")
     private long verificationTokenExpiration;
 
+    @Value("${jwt.access.expiration}")
+    private long accessTokenExpiration;
+
+    @Value("${jwt.refresh.expiration}")
+    private long refreshTokenExpiration;
+
     private Algorithm algorithm;
     private JWTVerifier verifier;
 
@@ -79,5 +85,19 @@ public class JwtUtils {
         } catch (JWTVerificationException e) {
             throw new IllegalArgumentException("Invalid token", e);
         }
+    }
+
+    public String generateAccessToken(Long userId) {
+        return JWT.create()
+                .withSubject(Long.toString(userId))
+                .withExpiresAt(new Date(System.currentTimeMillis() + accessTokenExpiration))
+                .sign(com.auth0.jwt.algorithms.Algorithm.HMAC256(secret));
+    }
+
+    public String generateRefreshToken(Long userId) {
+        return JWT.create()
+                .withSubject(Long.toString(userId))
+                .withExpiresAt(new Date(System.currentTimeMillis() + refreshTokenExpiration))
+                .sign(com.auth0.jwt.algorithms.Algorithm.HMAC256(secret));
     }
 }

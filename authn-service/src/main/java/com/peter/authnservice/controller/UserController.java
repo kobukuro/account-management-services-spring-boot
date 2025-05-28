@@ -1,8 +1,6 @@
 package com.peter.authnservice.controller;
 
-import com.peter.authnservice.domain.dto.UserActivationRequest;
-import com.peter.authnservice.domain.dto.UserRegistrationRequest;
-import com.peter.authnservice.domain.dto.UserRegistrationResponse;
+import com.peter.authnservice.domain.dto.*;
 import com.peter.authnservice.domain.entity.AppUser;
 import com.peter.authnservice.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -94,4 +92,37 @@ public class UserController {
         userService.activateAccount(request.token());
         return ResponseEntity.noContent().build();
     }
+
+
+    @Operation(
+            summary = "Login user",
+            description = "Login a user and return access and refresh tokens"
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "User logged in successfully",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = UserLoginResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Invalid credentials",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "This email has not been verified.",
+                    content = @Content
+            )
+    })
+    @PostMapping("/login")
+    public ResponseEntity<UserLoginResponse> login(@Valid @RequestBody UserLoginRequest request) {
+        TokenPair tokenPair = userService.login(request.email(), request.password());
+        UserLoginResponse response = new UserLoginResponse(tokenPair.accessToken(), tokenPair.refreshToken());
+        return ResponseEntity.ok(response);
+    }
+
 }

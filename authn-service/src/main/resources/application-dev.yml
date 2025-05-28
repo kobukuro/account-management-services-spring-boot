@@ -27,6 +27,10 @@ secret-key: ${SECRET_KEY}
 jwt:
   verification:
     expiration: ${VERIFICATION_TOKEN_EXPIRATION_MILLISECONDS}
+  access:
+    expiration: ${ACCESS_TOKEN_EXPIRATION_MILLISECONDS}
+  refresh:
+    expiration: ${REFRESH_TOKEN_EXPIRATION_MILLISECONDS}
 frontend-url: ${FRONTEND_URL}
 app-name: ${APP_NAME}
 springdoc:

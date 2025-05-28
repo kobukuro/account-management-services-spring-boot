@@ -29,5 +29,9 @@ secret-key: "test-secret-key-for-ci-environment"
 jwt:
   verification:
     expiration: ${VERIFICATION_TOKEN_EXPIRATION_MILLISECONDS}
+  access:
+    expiration: ${ACCESS_TOKEN_EXPIRATION_MILLISECONDS}
+  refresh:
+    expiration:  ${REFRESH_TOKEN_EXPIRATION_MILLISECONDS}
 frontend-url: "test-frontend-url-for-ci-environment"
 app-name: "test-app-name-for-ci-environment"
