@@ -99,11 +99,7 @@ public class UserRegistrationIntegrationTest {
         flyway.clean();
         flyway.migrate();
 
-        consumer.seekToEnd(Collections.emptyList());
-        ConsumerRecords<String, UserRegistrationEvent> records;
-        do {
-            records = consumer.poll(Duration.ofMillis(100));
-        } while (!records.isEmpty());
+        consumer.poll(Duration.ofMillis(100));
     }
 
     @AfterEach
@@ -171,7 +167,7 @@ public class UserRegistrationIntegrationTest {
         assertEquals(0, userRepository.count());
 
         ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(5));
+                consumer.poll(Duration.ofSeconds(1));
         assertTrue(records.isEmpty());
     }
 
@@ -195,7 +191,7 @@ public class UserRegistrationIntegrationTest {
         assertEquals(0, userRepository.count());
 
         ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(5));
+                consumer.poll(Duration.ofSeconds(1));
         assertTrue(records.isEmpty());
     }
 
@@ -219,7 +215,7 @@ public class UserRegistrationIntegrationTest {
         assertEquals(0, userRepository.count());
 
         ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(5));
+                consumer.poll(Duration.ofSeconds(1));
         assertTrue(records.isEmpty());
     }
 
@@ -243,7 +239,7 @@ public class UserRegistrationIntegrationTest {
         assertEquals(0, userRepository.count());
 
         ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(5));
+                consumer.poll(Duration.ofSeconds(1));
         assertTrue(records.isEmpty());
     }
 
@@ -267,7 +263,7 @@ public class UserRegistrationIntegrationTest {
         assertEquals(0, userRepository.count());
 
         ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(5));
+                consumer.poll(Duration.ofSeconds(1));
         assertTrue(records.isEmpty());
     }
 
@@ -291,7 +287,7 @@ public class UserRegistrationIntegrationTest {
         assertEquals(0, userRepository.count());
 
         ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(5));
+                consumer.poll(Duration.ofSeconds(1));
         assertTrue(records.isEmpty());
     }
 
@@ -315,7 +311,7 @@ public class UserRegistrationIntegrationTest {
         assertEquals(0, userRepository.count());
 
         ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(5));
+                consumer.poll(Duration.ofSeconds(1));
         assertTrue(records.isEmpty());
     }
 
@@ -339,7 +335,7 @@ public class UserRegistrationIntegrationTest {
         assertEquals(0, userRepository.count());
 
         ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(5));
+                consumer.poll(Duration.ofSeconds(1));
         assertTrue(records.isEmpty());
     }
 
@@ -363,7 +359,7 @@ public class UserRegistrationIntegrationTest {
         assertFalse(userRepository.findByEmail(invalidRequest.email()).isPresent());
 
         ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(5));
+                consumer.poll(Duration.ofSeconds(1));
         assertTrue(records.isEmpty());
     }
 
@@ -379,7 +375,7 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isCreated());
 
         ConsumerRecords<String, UserRegistrationEvent> firstRecords =
-                consumer.poll(Duration.ofSeconds(5));
+                consumer.poll(Duration.ofSeconds(1));
         assertFalse(firstRecords.isEmpty());
 
         // Attempt to register with the same email again
@@ -389,7 +385,7 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isConflict());
 
         ConsumerRecords<String, UserRegistrationEvent> secondRecords =
-                consumer.poll(Duration.ofSeconds(5));
+                consumer.poll(Duration.ofSeconds(1));
         assertTrue(secondRecords.isEmpty());
 
         assertEquals(1, userRepository.count());
@@ -415,7 +411,7 @@ public class UserRegistrationIntegrationTest {
         assertEquals(0, userRepository.count());
 
         ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(5));
+                consumer.poll(Duration.ofSeconds(1));
         assertTrue(records.isEmpty());
     }
 
@@ -439,7 +435,7 @@ public class UserRegistrationIntegrationTest {
         assertEquals(0, userRepository.count());
 
         ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(5));
+                consumer.poll(Duration.ofSeconds(1));
         assertTrue(records.isEmpty());
     }
 
