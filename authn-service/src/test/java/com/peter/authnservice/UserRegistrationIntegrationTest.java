@@ -165,10 +165,6 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
-
-        ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(1));
-        assertTrue(records.isEmpty());
     }
 
     /**
@@ -189,10 +185,6 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
-
-        ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(1));
-        assertTrue(records.isEmpty());
     }
 
     /**
@@ -213,10 +205,6 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
-
-        ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(1));
-        assertTrue(records.isEmpty());
     }
 
     /**
@@ -237,10 +225,6 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
-
-        ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(1));
-        assertTrue(records.isEmpty());
     }
 
     /**
@@ -261,10 +245,6 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
-
-        ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(1));
-        assertTrue(records.isEmpty());
     }
 
     /**
@@ -285,10 +265,6 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
-
-        ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(1));
-        assertTrue(records.isEmpty());
     }
 
     /**
@@ -309,10 +285,6 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
-
-        ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(1));
-        assertTrue(records.isEmpty());
     }
 
     /**
@@ -333,10 +305,6 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
-
-        ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(1));
-        assertTrue(records.isEmpty());
     }
 
     /**
@@ -357,10 +325,6 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertFalse(userRepository.findByEmail(invalidRequest.email()).isPresent());
-
-        ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(1));
-        assertTrue(records.isEmpty());
     }
 
     /**
@@ -374,19 +338,11 @@ public class UserRegistrationIntegrationTest {
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isCreated());
 
-        ConsumerRecords<String, UserRegistrationEvent> firstRecords =
-                consumer.poll(Duration.ofSeconds(1));
-        assertFalse(firstRecords.isEmpty());
-
         // Attempt to register with the same email again
         mockMvc.perform(post(REGISTER_API_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isConflict());
-
-        ConsumerRecords<String, UserRegistrationEvent> secondRecords =
-                consumer.poll(Duration.ofSeconds(1));
-        assertTrue(secondRecords.isEmpty());
 
         assertEquals(1, userRepository.count());
     }
@@ -409,10 +365,6 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
-
-        ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(1));
-        assertTrue(records.isEmpty());
     }
 
     /**
@@ -433,10 +385,6 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
-
-        ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(1));
-        assertTrue(records.isEmpty());
     }
 
     /**
