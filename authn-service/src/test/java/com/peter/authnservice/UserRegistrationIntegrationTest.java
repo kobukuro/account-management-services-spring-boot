@@ -65,6 +65,7 @@ public class UserRegistrationIntegrationTest {
     private String firstName;
     private String lastName;
     private String testEmail;
+    private final String password = "Password123!";
 
     @Value("${app-name}")
     private String appName;
@@ -100,7 +101,7 @@ public class UserRegistrationIntegrationTest {
                 firstName,
                 lastName,
                 testEmail,
-                "Password123!"
+                password
         );
 
         // Reset database before each test
@@ -164,7 +165,7 @@ public class UserRegistrationIntegrationTest {
                 "",
                 lastName,
                 testEmail,
-                "Password123!"
+                password
         );
 
         mockMvc.perform(post(REGISTER_API_PATH)
@@ -188,7 +189,7 @@ public class UserRegistrationIntegrationTest {
                 firstName,
                 "",
                 testEmail,
-                "Password123!"
+                password
         );
 
         mockMvc.perform(post(REGISTER_API_PATH)
@@ -212,7 +213,7 @@ public class UserRegistrationIntegrationTest {
                 firstName,
                 lastName,
                 "invalid-email",
-                "Password123!"
+                password
         );
 
         mockMvc.perform(post(REGISTER_API_PATH)
@@ -264,7 +265,7 @@ public class UserRegistrationIntegrationTest {
                 firstName,
                 lastName,
                 "",
-                "Password123!"
+                password
         );
 
         mockMvc.perform(post(REGISTER_API_PATH)
