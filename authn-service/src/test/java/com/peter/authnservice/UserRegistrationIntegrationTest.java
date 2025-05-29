@@ -61,11 +61,12 @@ public class UserRegistrationIntegrationTest {
 
     private static Consumer<String, UserRegistrationEvent> consumer;
 
-    private UserRegistrationRequest validRequest;
-    private String firstName;
-    private String lastName;
-    private String testEmail;
+    private final String firstName = "John";
+    private final String lastName = "Doe";
+    private final String testEmail = "test@example.com";
     private final String password = "Password123!";
+
+    private final UserRegistrationRequest validRequest = new UserRegistrationRequest(firstName, lastName, testEmail, password);
 
     @Value("${app-name}")
     private String appName;
@@ -94,16 +95,6 @@ public class UserRegistrationIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        firstName = "John";
-        lastName = "Doe";
-        testEmail = "test@example.com";
-        validRequest = new UserRegistrationRequest(
-                firstName,
-                lastName,
-                testEmail,
-                password
-        );
-
         // Reset database before each test
         flyway.clean();
         flyway.migrate();
