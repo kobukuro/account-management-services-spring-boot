@@ -99,6 +99,7 @@ public class UserRegistrationIntegrationTest {
         flyway.clean();
         flyway.migrate();
 
+        consumer.seekToEnd(Collections.emptyList());
         ConsumerRecords<String, UserRegistrationEvent> records;
         do {
             records = consumer.poll(Duration.ofMillis(100));
