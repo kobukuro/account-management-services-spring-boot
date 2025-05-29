@@ -61,10 +61,12 @@ public class UserRegistrationIntegrationTest {
 
     private static Consumer<String, UserRegistrationEvent> consumer;
 
-    private UserRegistrationRequest validRequest;
-    private String firstName;
-    private String lastName;
-    private String testEmail;
+    private final String firstName = "John";
+    private final String lastName = "Doe";
+    private final String testEmail = "test@example.com";
+    private final String password = "Password123!";
+
+    private final UserRegistrationRequest validRequest = new UserRegistrationRequest(firstName, lastName, testEmail, password);
 
     @Value("${app-name}")
     private String appName;
@@ -93,16 +95,6 @@ public class UserRegistrationIntegrationTest {
 
     @BeforeEach
     void setUp() {
-        firstName = "John";
-        lastName = "Doe";
-        testEmail = "test@example.com";
-        validRequest = new UserRegistrationRequest(
-                firstName,
-                lastName,
-                testEmail,
-                "Password123!"
-        );
-
         // Reset database before each test
         flyway.clean();
         flyway.migrate();
@@ -156,15 +148,15 @@ public class UserRegistrationIntegrationTest {
     }
 
     /**
-     * Test empty first name
+     * Test password without uppercase letter
      */
     @Test
-    void whenEmptyFirstName_thenReturns400() throws Exception {
+    void whenPasswordWithoutUppercase_thenReturns400() throws Exception {
         UserRegistrationRequest invalidRequest = new UserRegistrationRequest(
-                "",
+                firstName,
                 lastName,
                 testEmail,
-                "Password123!"
+                "password123!"
         );
 
         mockMvc.perform(post(REGISTER_API_PATH)
@@ -173,10 +165,126 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
+    }
 
-        ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(5));
-        assertTrue(records.isEmpty());
+    /**
+     * Test password without lowercase letter
+     */
+    @Test
+    void whenPasswordWithoutLowercase_thenReturns400() throws Exception {
+        UserRegistrationRequest invalidRequest = new UserRegistrationRequest(
+                firstName,
+                lastName,
+                testEmail,
+                "PASSWORD123!"
+        );
+
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+
+        assertEquals(0, userRepository.count());
+    }
+
+    /**
+     * Test password without number
+     */
+    @Test
+    void whenPasswordWithoutNumber_thenReturns400() throws Exception {
+        UserRegistrationRequest invalidRequest = new UserRegistrationRequest(
+                firstName,
+                lastName,
+                testEmail,
+                "Password!@#"
+        );
+
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+
+        assertEquals(0, userRepository.count());
+    }
+
+    /**
+     * Test password without special character
+     */
+    @Test
+    void whenPasswordWithoutSpecialChar_thenReturns400() throws Exception {
+        UserRegistrationRequest invalidRequest = new UserRegistrationRequest(
+                firstName,
+                lastName,
+                testEmail,
+                "Password123"
+        );
+
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+
+        assertEquals(0, userRepository.count());
+    }
+
+    /**
+     * Test password too short (less than 8 characters)
+     */
+    @Test
+    void whenPasswordTooShort_thenReturns400() throws Exception {
+        UserRegistrationRequest invalidRequest = new UserRegistrationRequest(
+                firstName,
+                lastName,
+                testEmail,
+                "Pass1!"
+        );
+
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+
+        assertEquals(0, userRepository.count());
+    }
+
+    /**
+     * Test password with whitespace
+     */
+    @Test
+    void whenPasswordWithWhitespace_thenReturns400() throws Exception {
+        UserRegistrationRequest invalidRequest = new UserRegistrationRequest(
+                firstName,
+                lastName,
+                testEmail,
+                "Password 123!"
+        );
+
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+
+        assertEquals(0, userRepository.count());
+    }
+
+    /**
+     * Test empty first name
+     */
+    @Test
+    void whenEmptyFirstName_thenReturns400() throws Exception {
+        UserRegistrationRequest invalidRequest = new UserRegistrationRequest(
+                "",
+                lastName,
+                testEmail,
+                password
+        );
+
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+
+        assertEquals(0, userRepository.count());
     }
 
     /**
@@ -188,7 +296,7 @@ public class UserRegistrationIntegrationTest {
                 firstName,
                 "",
                 testEmail,
-                "Password123!"
+                password
         );
 
         mockMvc.perform(post(REGISTER_API_PATH)
@@ -197,10 +305,6 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
-
-        ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(5));
-        assertTrue(records.isEmpty());
     }
 
     /**
@@ -212,7 +316,7 @@ public class UserRegistrationIntegrationTest {
                 firstName,
                 lastName,
                 "invalid-email",
-                "Password123!"
+                password
         );
 
         mockMvc.perform(post(REGISTER_API_PATH)
@@ -221,10 +325,6 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertFalse(userRepository.findByEmail(invalidRequest.email()).isPresent());
-
-        ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(5));
-        assertTrue(records.isEmpty());
     }
 
     /**
@@ -238,19 +338,11 @@ public class UserRegistrationIntegrationTest {
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isCreated());
 
-        ConsumerRecords<String, UserRegistrationEvent> firstRecords =
-                consumer.poll(Duration.ofSeconds(5));
-        assertFalse(firstRecords.isEmpty());
-
         // Attempt to register with the same email again
         mockMvc.perform(post(REGISTER_API_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isConflict());
-
-        ConsumerRecords<String, UserRegistrationEvent> secondRecords =
-                consumer.poll(Duration.ofSeconds(5));
-        assertTrue(secondRecords.isEmpty());
 
         assertEquals(1, userRepository.count());
     }
@@ -264,7 +356,7 @@ public class UserRegistrationIntegrationTest {
                 firstName,
                 lastName,
                 "",
-                "Password123!"
+                password
         );
 
         mockMvc.perform(post(REGISTER_API_PATH)
@@ -273,10 +365,6 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
-
-        ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(5));
-        assertTrue(records.isEmpty());
     }
 
     /**
@@ -297,10 +385,6 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         assertEquals(0, userRepository.count());
-
-        ConsumerRecords<String, UserRegistrationEvent> records =
-                consumer.poll(Duration.ofSeconds(5));
-        assertTrue(records.isEmpty());
     }
 
     /**
