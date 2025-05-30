@@ -2,9 +2,7 @@ package com.peter.authnservice.service.impl;
 
 import com.peter.authnservice.domain.dto.TokenPair;
 import com.peter.authnservice.domain.entity.AppUser;
-import com.peter.authnservice.domain.event.Email;
-import com.peter.authnservice.domain.event.UserDetails;
-import com.peter.authnservice.domain.event.UserRegistrationEvent;
+import com.peter.authnservice.domain.event.*;
 import com.peter.authnservice.exception.*;
 import com.peter.authnservice.repository.UserRepository;
 import com.peter.authnservice.service.UserService;
@@ -26,11 +24,13 @@ public class UserServiceImpl implements UserService {
     private String appName;
     @Value("${jwt.verification.expiration}")
     private long verificationTokenExpirationInMilliseconds;
+    @Value("${jwt.reset-password.expiration}")
+    private long resetPasswordTokenExpirationInMilliseconds;
     @Value("${frontend-url}")
     private String frontendUrl;
-    private final KafkaTemplate<String, UserRegistrationEvent> kafkaTemplate;
+    private final KafkaTemplate<String, DomainEvent> kafkaTemplate;
 
-    public UserServiceImpl(UserRepository userRepository, JwtUtils jwtUtils, KafkaTemplate<String, UserRegistrationEvent> kafkaTemplate) {
+    public UserServiceImpl(UserRepository userRepository, JwtUtils jwtUtils, KafkaTemplate<String, DomainEvent> kafkaTemplate) {
         this.userRepository = userRepository;
         this.jwtUtils = jwtUtils;
         this.kafkaTemplate = kafkaTemplate;
@@ -90,5 +90,30 @@ public class UserServiceImpl implements UserService {
         String accessToken = jwtUtils.generateAccessToken(userId);
         String refreshToken = jwtUtils.generateRefreshToken(userId);
         return new TokenPair(accessToken, refreshToken);
+    }
+
+    @Override
+    public void resetPassword(String email) {
+        AppUser user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new EmailNotFoundException("Email not found"));
+        if (!user.isEnabled()) {
+            throw new EmailNotVerifiedException("This email has not been verified.\nPlease check your email for the verification link.");
+        }
+        String firstName = user.getFirstName();
+        String lastName = user.getLastName();
+        PasswordResetEvent passwordResetEvent = new PasswordResetEvent(
+                new UserDetails(firstName, lastName, email),
+                new Email("Reset password on " + appName,
+                        "email/reset-password-email",
+                        Map.of(
+                                "appName", appName,
+                                "firstName", firstName,
+                                "lastName", lastName,
+                                "resetPasswordLink", frontendUrl + "/reset-password?token=" + jwtUtils.generateResetPasswordToken(email),
+                                "expirationMinutes", (int) (resetPasswordTokenExpirationInMilliseconds / 60000)
+                        )
+                )
+        );
+        kafkaTemplate.send("password_reset", passwordResetEvent);
     }
 }

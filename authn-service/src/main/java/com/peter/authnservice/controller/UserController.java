@@ -125,4 +125,10 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody PasswordResetRequest request) {
+        userService.resetPassword(request.email());
+        return ResponseEntity.noContent().build();
+    }
+
 }

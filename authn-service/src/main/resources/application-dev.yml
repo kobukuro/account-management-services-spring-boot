@@ -31,6 +31,8 @@ jwt:
     expiration: ${ACCESS_TOKEN_EXPIRATION_MILLISECONDS}
   refresh:
     expiration: ${REFRESH_TOKEN_EXPIRATION_MILLISECONDS}
+  reset-password:
+    expiration: ${RESET_PASSWORD_TOKEN_EXPIRATION_MILLISECONDS}
 frontend-url: ${FRONTEND_URL}
 app-name: ${APP_NAME}
 springdoc:
