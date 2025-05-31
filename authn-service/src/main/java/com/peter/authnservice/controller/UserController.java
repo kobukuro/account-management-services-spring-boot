@@ -152,4 +152,35 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/reset-password-confirm")
+    @Operation(
+            summary = "Confirm password reset",
+            description = "Confirm the password reset by providing the reset token and new password."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "API is called successfully. Password reset confirmed.",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Invalid or expired reset password token",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "This email has not been verified.",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Email not found",
+                    content = @Content
+            )
+    })
+    public ResponseEntity<Void> resetPasswordConfirm(@Valid @RequestBody PasswordResetConfirmRequest request) {
+        userService.resetPasswordConfirm(request.token(), request.password());
+        return ResponseEntity.noContent().build();
+    }
 }

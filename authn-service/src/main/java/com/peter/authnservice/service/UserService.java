@@ -11,4 +11,6 @@ public interface UserService {
     TokenPair login(String email, String password);
 
     void resetPassword(String email);
+
+    void resetPasswordConfirm(String token, String password);
 }

@@ -116,4 +116,34 @@ public class UserServiceImpl implements UserService {
         );
         kafkaTemplate.send("password_reset", passwordResetEvent);
     }
+
+    @Override
+    public void resetPasswordConfirm(String token, String newPassword) {
+        if (!jwtUtils.validateToken(token)) {
+            throw new TokenNotValidException("Invalid or expired reset password token");
+        }
+        String email = jwtUtils.getEmailFromToken(token);
+        AppUser user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new EmailNotFoundException("Email not found"));
+        if (!user.isEnabled()) {
+            throw new EmailNotVerifiedException("This email has not been verified.\nPlease check your email for the verification link.");
+        }
+        String hashedPassword = BCrypt.hashpw(newPassword, BCrypt.gensalt());
+        user.setPassword(hashedPassword);
+        userRepository.save(user);
+        String firstName = user.getFirstName();
+        String lastName = user.getLastName();
+        Event passwordResetConfirmEvent = new Event(
+                new UserDetails(firstName, lastName, email),
+                new Email("Password reset confirmation on " + appName,
+                        "email/reset-password-confirm-email",
+                        Map.of(
+                                "appName", appName,
+                                "firstName", firstName,
+                                "lastName", lastName
+                        )
+                )
+        );
+        kafkaTemplate.send("password_reset_confirm", passwordResetConfirmEvent);
+    }
 }
