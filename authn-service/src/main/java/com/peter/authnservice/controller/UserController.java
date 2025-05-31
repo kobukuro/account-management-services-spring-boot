@@ -152,4 +152,9 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/reset-password-confirm")
+    public ResponseEntity<Void> resetPasswordConfirm(@Valid @RequestBody PasswordResetConfirmRequest request) {
+        userService.resetPasswordConfirm(request.token(), request.password());
+        return ResponseEntity.noContent().build();
+    }
 }
