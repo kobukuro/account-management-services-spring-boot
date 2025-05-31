@@ -1,6 +1,6 @@
 package com.peter.authnservice.domain.event;
 
-public record PasswordResetEvent(
+public record Event(
         UserDetails userDetails,
-        Email email) implements DomainEvent {
+        Email email) {
 }

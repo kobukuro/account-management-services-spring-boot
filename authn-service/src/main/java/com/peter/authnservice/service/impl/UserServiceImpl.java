@@ -28,9 +28,9 @@ public class UserServiceImpl implements UserService {
     private long resetPasswordTokenExpirationInMilliseconds;
     @Value("${frontend-url}")
     private String frontendUrl;
-    private final KafkaTemplate<String, DomainEvent> kafkaTemplate;
+    private final KafkaTemplate<String, Event> kafkaTemplate;
 
-    public UserServiceImpl(UserRepository userRepository, JwtUtils jwtUtils, KafkaTemplate<String, DomainEvent> kafkaTemplate) {
+    public UserServiceImpl(UserRepository userRepository, JwtUtils jwtUtils, KafkaTemplate<String, Event> kafkaTemplate) {
         this.userRepository = userRepository;
         this.jwtUtils = jwtUtils;
         this.kafkaTemplate = kafkaTemplate;
@@ -41,7 +41,7 @@ public class UserServiceImpl implements UserService {
         if (userRepository.existsByEmail(email)) {
             throw new EmailAlreadyExistsException("This email has been registered.");
         }
-        UserRegistrationEvent userRegistrationEvent = new UserRegistrationEvent(
+        Event Event = new Event(
                 new UserDetails(firstName, lastName, email),
                 new Email("Account activation on " + appName,
                         "email/verification-email",
@@ -54,7 +54,7 @@ public class UserServiceImpl implements UserService {
                         )
                 )
         );
-        kafkaTemplate.send("user_registration", userRegistrationEvent);
+        kafkaTemplate.send("user_registration", Event);
         String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
         return userRepository.save(new AppUser(firstName, lastName, email,
                 hashedPassword, false));
@@ -101,7 +101,7 @@ public class UserServiceImpl implements UserService {
         }
         String firstName = user.getFirstName();
         String lastName = user.getLastName();
-        PasswordResetEvent passwordResetEvent = new PasswordResetEvent(
+        Event passwordResetEvent = new Event(
                 new UserDetails(firstName, lastName, email),
                 new Email("Reset password on " + appName,
                         "email/reset-password-email",
