@@ -125,4 +125,31 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(
+            summary = "Reset password request",
+            description = "Request a password reset by providing the registered email address. A reset link will be sent to the email."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "API is called successfully. A password reset link will be sent to the email",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "This email has not been verified.",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Email not found",
+                    content = @Content
+            )
+    })
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(@Valid @RequestBody PasswordResetRequest request) {
+        userService.resetPassword(request.email());
+        return ResponseEntity.noContent().build();
+    }
+
 }

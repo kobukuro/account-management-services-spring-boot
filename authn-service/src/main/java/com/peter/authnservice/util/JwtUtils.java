@@ -25,6 +25,9 @@ public class JwtUtils {
     @Value("${jwt.refresh.expiration}")
     private long refreshTokenExpiration;
 
+    @Value("${jwt.reset-password.expiration}")
+    private long resetPasswordTokenExpiration;
+
     private Algorithm algorithm;
     private JWTVerifier verifier;
 
@@ -98,6 +101,13 @@ public class JwtUtils {
         return JWT.create()
                 .withSubject(Long.toString(userId))
                 .withExpiresAt(new Date(System.currentTimeMillis() + refreshTokenExpiration))
+                .sign(com.auth0.jwt.algorithms.Algorithm.HMAC256(secret));
+    }
+
+    public String generateResetPasswordToken(String email) {
+        return JWT.create()
+                .withSubject(email)
+                .withExpiresAt(new Date(System.currentTimeMillis() + resetPasswordTokenExpiration))
                 .sign(com.auth0.jwt.algorithms.Algorithm.HMAC256(secret));
     }
 }

@@ -22,7 +22,7 @@ spring:
         key-serializer: org.apache.kafka.common.serialization.StringSerializer
         value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
         properties:
-            spring.json.type.mapping: event:com.peter.authnservice.domain.event.UserRegistrationEvent
+            spring.json.type.mapping: event:com.peter.authnservice.domain.event.Event
 secret-key: ${SECRET_KEY}
 jwt:
   verification:
@@ -31,6 +31,8 @@ jwt:
     expiration: ${ACCESS_TOKEN_EXPIRATION_MILLISECONDS}
   refresh:
     expiration: ${REFRESH_TOKEN_EXPIRATION_MILLISECONDS}
+  reset-password:
+    expiration: ${RESET_PASSWORD_TOKEN_EXPIRATION_MILLISECONDS}
 frontend-url: ${FRONTEND_URL}
 app-name: ${APP_NAME}
 springdoc:

@@ -4,7 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.peter.authnservice.domain.dto.UserActivationRequest;
 import com.peter.authnservice.domain.dto.UserRegistrationRequest;
 import com.peter.authnservice.domain.entity.AppUser;
-import com.peter.authnservice.domain.event.UserRegistrationEvent;
+import com.peter.authnservice.domain.event.Event;
 import com.peter.authnservice.repository.UserRepository;
 import com.peter.authnservice.util.JwtUtils;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -59,7 +59,7 @@ public class UserRegistrationIntegrationTest {
     @Autowired
     private Flyway flyway;
 
-    private static Consumer<String, UserRegistrationEvent> consumer;
+    private static Consumer<String, Event> consumer;
 
     private final String firstName = "John";
     private final String lastName = "Doe";
@@ -84,10 +84,10 @@ public class UserRegistrationIntegrationTest {
         consumerProps.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, JsonDeserializer.class);
         consumerProps.put(JsonDeserializer.TRUSTED_PACKAGES, "*");
 
-        ConsumerFactory<String, UserRegistrationEvent> consumerFactory =
+        ConsumerFactory<String, Event> consumerFactory =
                 new DefaultKafkaConsumerFactory<>(consumerProps,
                         new StringDeserializer(),
-                        new JsonDeserializer<>(UserRegistrationEvent.class, false));
+                        new JsonDeserializer<>(Event.class, false));
 
         consumer = consumerFactory.createConsumer();
         consumer.subscribe(Collections.singletonList(KAFKA_TOPIC));
@@ -127,12 +127,12 @@ public class UserRegistrationIntegrationTest {
 
         assertTrue(userRepository.findByEmail(validRequest.email()).isPresent());
 
-        ConsumerRecords<String, UserRegistrationEvent> records =
+        ConsumerRecords<String, Event> records =
                 consumer.poll(Duration.ofSeconds(5));
         assertFalse(records.isEmpty());
 
-        ConsumerRecord<String, UserRegistrationEvent> record = records.iterator().next();
-        UserRegistrationEvent event = record.value();
+        ConsumerRecord<String, Event> record = records.iterator().next();
+        Event event = record.value();
         assertEquals(testEmail, event.userDetails().email());
         assertEquals(firstName, event.userDetails().firstName());
         assertEquals(lastName, event.userDetails().lastName());

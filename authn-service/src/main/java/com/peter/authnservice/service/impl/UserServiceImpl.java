@@ -2,9 +2,7 @@ package com.peter.authnservice.service.impl;
 
 import com.peter.authnservice.domain.dto.TokenPair;
 import com.peter.authnservice.domain.entity.AppUser;
-import com.peter.authnservice.domain.event.Email;
-import com.peter.authnservice.domain.event.UserDetails;
-import com.peter.authnservice.domain.event.UserRegistrationEvent;
+import com.peter.authnservice.domain.event.*;
 import com.peter.authnservice.exception.*;
 import com.peter.authnservice.repository.UserRepository;
 import com.peter.authnservice.service.UserService;
@@ -26,11 +24,13 @@ public class UserServiceImpl implements UserService {
     private String appName;
     @Value("${jwt.verification.expiration}")
     private long verificationTokenExpirationInMilliseconds;
+    @Value("${jwt.reset-password.expiration}")
+    private long resetPasswordTokenExpirationInMilliseconds;
     @Value("${frontend-url}")
     private String frontendUrl;
-    private final KafkaTemplate<String, UserRegistrationEvent> kafkaTemplate;
+    private final KafkaTemplate<String, Event> kafkaTemplate;
 
-    public UserServiceImpl(UserRepository userRepository, JwtUtils jwtUtils, KafkaTemplate<String, UserRegistrationEvent> kafkaTemplate) {
+    public UserServiceImpl(UserRepository userRepository, JwtUtils jwtUtils, KafkaTemplate<String, Event> kafkaTemplate) {
         this.userRepository = userRepository;
         this.jwtUtils = jwtUtils;
         this.kafkaTemplate = kafkaTemplate;
@@ -41,7 +41,7 @@ public class UserServiceImpl implements UserService {
         if (userRepository.existsByEmail(email)) {
             throw new EmailAlreadyExistsException("This email has been registered.");
         }
-        UserRegistrationEvent userRegistrationEvent = new UserRegistrationEvent(
+        Event Event = new Event(
                 new UserDetails(firstName, lastName, email),
                 new Email("Account activation on " + appName,
                         "email/verification-email",
@@ -54,7 +54,7 @@ public class UserServiceImpl implements UserService {
                         )
                 )
         );
-        kafkaTemplate.send("user_registration", userRegistrationEvent);
+        kafkaTemplate.send("user_registration", Event);
         String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
         return userRepository.save(new AppUser(firstName, lastName, email,
                 hashedPassword, false));
@@ -90,5 +90,30 @@ public class UserServiceImpl implements UserService {
         String accessToken = jwtUtils.generateAccessToken(userId);
         String refreshToken = jwtUtils.generateRefreshToken(userId);
         return new TokenPair(accessToken, refreshToken);
+    }
+
+    @Override
+    public void resetPassword(String email) {
+        AppUser user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new EmailNotFoundException("Email not found"));
+        if (!user.isEnabled()) {
+            throw new EmailNotVerifiedException("This email has not been verified.\nPlease check your email for the verification link.");
+        }
+        String firstName = user.getFirstName();
+        String lastName = user.getLastName();
+        Event passwordResetEvent = new Event(
+                new UserDetails(firstName, lastName, email),
+                new Email("Reset password on " + appName,
+                        "email/reset-password-email",
+                        Map.of(
+                                "appName", appName,
+                                "firstName", firstName,
+                                "lastName", lastName,
+                                "resetPasswordLink", frontendUrl + "/reset-password?token=" + jwtUtils.generateResetPasswordToken(email),
+                                "expirationMinutes", (int) (resetPasswordTokenExpirationInMilliseconds / 60000)
+                        )
+                )
+        );
+        kafkaTemplate.send("password_reset", passwordResetEvent);
     }
 }
