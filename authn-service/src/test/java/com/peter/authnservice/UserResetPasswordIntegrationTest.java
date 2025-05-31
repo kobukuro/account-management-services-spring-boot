@@ -28,7 +28,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Duration;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -91,8 +91,7 @@ public class UserResetPasswordIntegrationTest {
                         new JsonDeserializer<>(Event.class, false));
 
         consumer = consumerFactory.createConsumer();
-        consumer.subscribe(Collections.singletonList("password_reset"));
-        consumer.subscribe(Collections.singletonList("password_reset_confirm"));
+        consumer.subscribe(Arrays.asList("password_reset", "password_reset_confirm"));
     }
 
     @BeforeEach
