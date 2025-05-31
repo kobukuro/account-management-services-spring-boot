@@ -2,7 +2,7 @@ package com.peter.notificationservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.peter.notificationservice.domain.event.UserRegistrationEvent;
+import com.peter.notificationservice.domain.event.Event;
 import com.peter.notificationservice.service.NotificationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
@@ -26,15 +26,15 @@ public class NotificationServiceApplication {
         SpringApplication.run(NotificationServiceApplication.class, args);
     }
     @RetryableTopic
-    @KafkaListener(topics = "user_registration")
-    public void handleNotification(UserRegistrationEvent userRegistrationEvent, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic, @Header(KafkaHeaders.OFFSET) long offset) throws JsonProcessingException {
-        log.info("Received: {} from {} offset {}", new ObjectMapper().writeValueAsString(userRegistrationEvent), topic, offset);
-        notificationService.processNotification(userRegistrationEvent);
+    @KafkaListener(topics = {"user_registration", "password_reset"})
+    public void handleNotification(Event event, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic, @Header(KafkaHeaders.OFFSET) long offset) throws JsonProcessingException {
+        log.info("Received: {} from {} offset {}", new ObjectMapper().writeValueAsString(event), topic, offset);
+        notificationService.processNotification(event);
     }
 
     @DltHandler
-    public void listenDLT(UserRegistrationEvent userRegistrationEvent, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic, @Header(KafkaHeaders.OFFSET) long offset) throws JsonProcessingException {
-        log.info("DLT Received : {} , from {} , offset {}", new ObjectMapper().writeValueAsString(userRegistrationEvent), topic, offset);
+    public void listenDLT(Event event, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic, @Header(KafkaHeaders.OFFSET) long offset) throws JsonProcessingException {
+        log.info("DLT Received : {} , from {} , offset {}", new ObjectMapper().writeValueAsString(event), topic, offset);
     }
 }
 

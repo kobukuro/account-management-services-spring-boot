@@ -1,7 +1,7 @@
 package com.peter.notificationservice.service;
 
-import com.peter.notificationservice.domain.event.UserRegistrationEvent;
+import com.peter.notificationservice.domain.event.Event;
 
 public interface NotificationService {
-    void processNotification(UserRegistrationEvent event);
+    void processNotification(Event event);
 }
