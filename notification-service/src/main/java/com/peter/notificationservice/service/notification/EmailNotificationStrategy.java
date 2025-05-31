@@ -1,6 +1,6 @@
 package com.peter.notificationservice.service.notification;
 
-import com.peter.notificationservice.domain.event.UserRegistrationEvent;
+import com.peter.notificationservice.domain.event.Event;
 import com.peter.notificationservice.service.EmailService;
 import org.springframework.stereotype.Service;
 
@@ -15,14 +15,14 @@ public class EmailNotificationStrategy implements NotificationStrategy {
     }
 
     @Override
-    public boolean canHandle(UserRegistrationEvent event) {
+    public boolean canHandle(Event event) {
         return event.userDetails() != null &&
                 event.userDetails().email() != null &&
                 !event.userDetails().email().isEmpty();
     }
 
     @Override
-    public void notify(UserRegistrationEvent event) {
+    public void notify(Event event) {
         String email = event.userDetails().email();
         String subject = event.email().subject();
         String templateName = event.email().templateName();

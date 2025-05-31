@@ -1,6 +1,6 @@
 package com.peter.notificationservice.service.impl;
 
-import com.peter.notificationservice.domain.event.UserRegistrationEvent;
+import com.peter.notificationservice.domain.event.Event;
 import com.peter.notificationservice.service.NotificationService;
 import com.peter.notificationservice.service.notification.NotificationStrategy;
 import org.springframework.stereotype.Service;
@@ -15,7 +15,7 @@ public class NotificationServiceImpl implements NotificationService {
         this.notificationStrategies = notificationStrategies;
     }
 
-    public void processNotification(UserRegistrationEvent event) {
+    public void processNotification(Event event) {
         // Iterate through the list of notification strategies and find the ones that can handle the event
         notificationStrategies.stream()
                 .filter(strategy -> strategy.canHandle(event))

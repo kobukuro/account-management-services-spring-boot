@@ -11,7 +11,7 @@ spring:
         spring:
           json:
             type:
-              mapping: event:com.peter.notificationservice.domain.event.UserRegistrationEvent
+              mapping: event:com.peter.notificationservice.domain.event.Event
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
