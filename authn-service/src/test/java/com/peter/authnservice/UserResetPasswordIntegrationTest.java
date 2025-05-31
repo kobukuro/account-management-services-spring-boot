@@ -290,4 +290,161 @@ public class UserResetPasswordIntegrationTest {
                         .content(objectMapper.writeValueAsString(confirmRequest)))
                 .andExpect(status().isBadRequest());
     }
+
+    /**
+     * Test password reset with password less than 8 characters
+     */
+    @Test
+    void whenPasswordLessThan8Chars_thenReturns400() throws Exception {
+        // Setup user
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest)))
+                .andExpect(status().isCreated());
+
+        AppUser user = userRepository.findByEmail(testEmail).orElseThrow();
+        user.setEnabled(true);
+        userRepository.save(user);
+
+        String resetToken = jwtUtils.generateResetPasswordToken(testEmail);
+
+        PasswordResetConfirmRequest shortPassword = new PasswordResetConfirmRequest(
+                resetToken, "Ab1!xyz");
+
+        mockMvc.perform(post(RESET_PASSWORD_CONFIRM_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(shortPassword)))
+                .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * Test password reset with password missing uppercase letter
+     */
+    @Test
+    void whenPasswordWithoutUppercase_thenReturns400() throws Exception {
+        // Setup user
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest)))
+                .andExpect(status().isCreated());
+
+        AppUser user = userRepository.findByEmail(testEmail).orElseThrow();
+        user.setEnabled(true);
+        userRepository.save(user);
+
+        String resetToken = jwtUtils.generateResetPasswordToken(testEmail);
+
+        PasswordResetConfirmRequest noUppercase = new PasswordResetConfirmRequest(
+                resetToken, "password123!");
+
+        mockMvc.perform(post(RESET_PASSWORD_CONFIRM_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(noUppercase)))
+                .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * Test password reset with password missing lowercase letter
+     */
+    @Test
+    void whenPasswordWithoutLowercase_thenReturns400() throws Exception {
+        // Setup user
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest)))
+                .andExpect(status().isCreated());
+
+        AppUser user = userRepository.findByEmail(testEmail).orElseThrow();
+        user.setEnabled(true);
+        userRepository.save(user);
+
+        String resetToken = jwtUtils.generateResetPasswordToken(testEmail);
+
+        PasswordResetConfirmRequest noLowercase = new PasswordResetConfirmRequest(
+                resetToken, "PASSWORD123!");
+
+        mockMvc.perform(post(RESET_PASSWORD_CONFIRM_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(noLowercase)))
+                .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * Test password reset with password missing number
+     */
+    @Test
+    void whenPasswordWithoutNumber_thenReturns400() throws Exception {
+        // Setup user
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest)))
+                .andExpect(status().isCreated());
+
+        AppUser user = userRepository.findByEmail(testEmail).orElseThrow();
+        user.setEnabled(true);
+        userRepository.save(user);
+
+        String resetToken = jwtUtils.generateResetPasswordToken(testEmail);
+
+        PasswordResetConfirmRequest noNumber = new PasswordResetConfirmRequest(
+                resetToken, "Password!!!");
+
+        mockMvc.perform(post(RESET_PASSWORD_CONFIRM_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(noNumber)))
+                .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * Test password reset with password missing special character
+     */
+    @Test
+    void whenPasswordWithoutSpecialChar_thenReturns400() throws Exception {
+        // Setup user
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest)))
+                .andExpect(status().isCreated());
+
+        AppUser user = userRepository.findByEmail(testEmail).orElseThrow();
+        user.setEnabled(true);
+        userRepository.save(user);
+
+        String resetToken = jwtUtils.generateResetPasswordToken(testEmail);
+
+        PasswordResetConfirmRequest noSpecial = new PasswordResetConfirmRequest(
+                resetToken, "Password123");
+
+        mockMvc.perform(post(RESET_PASSWORD_CONFIRM_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(noSpecial)))
+                .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * Test password reset with password containing whitespace
+     */
+    @Test
+    void whenPasswordContainsWhitespace_thenReturns400() throws Exception {
+        // Setup user
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest)))
+                .andExpect(status().isCreated());
+
+        AppUser user = userRepository.findByEmail(testEmail).orElseThrow();
+        user.setEnabled(true);
+        userRepository.save(user);
+
+        String resetToken = jwtUtils.generateResetPasswordToken(testEmail);
+
+        PasswordResetConfirmRequest withWhitespace = new PasswordResetConfirmRequest(
+                resetToken, "Password 123!");
+
+        mockMvc.perform(post(RESET_PASSWORD_CONFIRM_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(withWhitespace)))
+                .andExpect(status().isBadRequest());
+    }
+
 }
