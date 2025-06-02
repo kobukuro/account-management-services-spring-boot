@@ -13,4 +13,6 @@ public interface UserService {
     void resetPassword(String email);
 
     void resetPasswordConfirm(String token, String password);
+
+    void changePassword(Long userId, String currentPassword, String newPassword);
 }

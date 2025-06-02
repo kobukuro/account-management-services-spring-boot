@@ -42,3 +42,4 @@ springdoc:
   swagger-ui:
     enabled: true
     path: /authn/swagger-ui.html
+allowed-origins: ${ALLOWED_ORIGINS}

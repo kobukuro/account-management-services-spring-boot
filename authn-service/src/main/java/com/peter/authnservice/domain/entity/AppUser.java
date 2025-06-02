@@ -6,8 +6,10 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.ZonedDateTime;
+import java.util.ArrayList;
 
 @Getter
 @Setter
@@ -16,7 +18,7 @@ import java.time.ZonedDateTime;
 @Table(indexes = {
         @Index(name = "idx_app_user_email", columnList = "templates/email")
 })
-public class AppUser {
+public class AppUser implements UserDetails {
     @Id
     @SequenceGenerator(
             name = "app_user_sequence",
@@ -55,5 +57,15 @@ public class AppUser {
 
     public boolean isEnabled() {
         return enabled;
+    }
+
+    @Override
+    public String getUsername() {
+        return null;
+    }
+
+    @Override
+    public java.util.Collection<? extends org.springframework.security.core.GrantedAuthority> getAuthorities() {
+        return new ArrayList<>();
     }
 }
