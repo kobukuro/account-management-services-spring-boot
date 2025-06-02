@@ -1,10 +1,10 @@
 package com.peter.authnservice;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.peter.authnservice.domain.dto.UserLoginRequest;
-import com.peter.authnservice.domain.dto.UserRegistrationRequest;
+import com.peter.authnservice.domain.dto.*;
 import com.peter.authnservice.domain.entity.AppUser;
 import com.peter.authnservice.repository.UserRepository;
+import com.peter.authnservice.util.JwtUtils;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,7 +14,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -26,12 +29,16 @@ public class UserLoginIntegrationTest {
 
     private static final String REGISTER_API_PATH = "/api/v1/users";
     private static final String LOGIN_API_PATH = "/api/v1/users/login";
+    private static final String REFRESH_TOKEN_API_PATH = "/api/v1/users/refresh-token";
 
     @Autowired
     private MockMvc mockMvc;
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private JwtUtils jwtUtils;
 
     @Autowired
     private UserRepository userRepository;
@@ -165,6 +172,134 @@ public class UserLoginIntegrationTest {
         mockMvc.perform(post(LOGIN_API_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    // ==================== REFRESH TOKEN TESTS ====================
+
+    /**
+     * Test successful token refresh with valid refresh token
+     */
+    @Test
+    void whenValidRefreshToken_thenReturns200AndNewAccessToken() throws Exception {
+        // Register user
+        UserRegistrationRequest registrationRequest = new UserRegistrationRequest(
+                firstName, lastName, email, password
+        );
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registrationRequest)))
+                .andExpect(status().isCreated());
+
+        // Verify account
+        AppUser user = userRepository.findByEmail(email).orElseThrow();
+        user.setEnabled(true);
+        userRepository.save(user);
+
+        // Extract refresh token from login response
+        UserLoginRequest loginRequest = new UserLoginRequest(email, password);
+
+        String loginResponseBody = mockMvc.perform(post(LOGIN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andReturn().getResponse().getContentAsString();
+        UserLoginResponse loginResponse = objectMapper.readValue(loginResponseBody, UserLoginResponse.class);
+        String refreshToken = loginResponse.refreshToken();
+        TokenRefreshRequest request = new TokenRefreshRequest(refreshToken);
+
+        MvcResult result = mockMvc.perform(post(REFRESH_TOKEN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").exists())
+                .andReturn();
+
+        String responseBody = result.getResponse().getContentAsString();
+        TokenRefreshResponse response = objectMapper.readValue(responseBody, TokenRefreshResponse.class);
+
+        // Verify the new access token is valid and contains correct user ID
+        assertTrue(jwtUtils.validateToken(response.accessToken()));
+        assertEquals(user.getId(), jwtUtils.getUserIdFromToken(response.accessToken()));
+    }
+
+    /**
+     * Test refresh token with invalid token format
+     */
+    @Test
+    void whenInvalidTokenFormat_thenReturns401() throws Exception {
+        TokenRefreshRequest request = new TokenRefreshRequest("invalid-token-format");
+
+        mockMvc.perform(post(REFRESH_TOKEN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * Test refresh token with token containing non-existent user ID
+     */
+    @Test
+    void whenTokenWithNonExistentUserId_thenReturns401() throws Exception {
+        // Generate token with non-existent user ID
+        Long nonExistentUserId = 99999L;
+        String tokenWithNonExistentUser = jwtUtils.generateRefreshToken(nonExistentUserId);
+
+        TokenRefreshRequest request = new TokenRefreshRequest(tokenWithNonExistentUser);
+
+        mockMvc.perform(post(REFRESH_TOKEN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * Test refresh token for disabled user
+     */
+    @Test
+    void whenUserIsDisabled_thenReturns401() throws Exception {
+        // Register user
+        UserRegistrationRequest registrationRequest = new UserRegistrationRequest(
+                firstName, lastName, email, password
+        );
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(registrationRequest)))
+                .andExpect(status().isCreated());
+
+        AppUser disabledUser = userRepository.findByEmail(email).orElseThrow();
+
+        String refreshToken = jwtUtils.generateRefreshToken(disabledUser.getId());
+        TokenRefreshRequest request = new TokenRefreshRequest(refreshToken);
+
+        mockMvc.perform(post(REFRESH_TOKEN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * Test refresh token with empty token
+     */
+    @Test
+    void whenEmptyRefreshToken_thenReturns400() throws Exception {
+        TokenRefreshRequest request = new TokenRefreshRequest("");
+
+        mockMvc.perform(post(REFRESH_TOKEN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * Test refresh token with null token
+     */
+    @Test
+    void whenNullRefreshToken_thenReturns400() throws Exception {
+        TokenRefreshRequest request = new TokenRefreshRequest(null);
+
+        mockMvc.perform(post(REFRESH_TOKEN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
 }
