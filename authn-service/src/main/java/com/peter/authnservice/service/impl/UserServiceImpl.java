@@ -146,4 +146,31 @@ public class UserServiceImpl implements UserService {
         );
         kafkaTemplate.send("password_reset_confirm", passwordResetConfirmEvent);
     }
+
+    @Override
+    public void changePassword(Long userId, String currentPassword, String newPassword) {
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new TokenNotValidException("Invalid or expired token"));
+        if (!BCrypt.checkpw(currentPassword, user.getPassword())) {
+            throw new InvalidCredentialsException("Current password is incorrect");
+        }
+        String hashedNewPassword = BCrypt.hashpw(newPassword, BCrypt.gensalt());
+        user.setPassword(hashedNewPassword);
+        userRepository.save(user);
+        String firstName = user.getFirstName();
+        String lastName = user.getLastName();
+        String email = user.getEmail();
+        Event passwordChangeEvent = new Event(
+                new UserDetails(firstName, lastName, email),
+                new Email("Password changed on " + appName,
+                        "email/change-password-email",
+                        Map.of(
+                                "appName", appName,
+                                "firstName", firstName,
+                                "lastName", lastName
+                        )
+                )
+        );
+        kafkaTemplate.send("password_change", passwordChangeEvent);
+    }
 }

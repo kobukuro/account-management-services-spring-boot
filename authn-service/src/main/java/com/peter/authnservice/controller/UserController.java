@@ -13,6 +13,7 @@ import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -181,6 +182,30 @@ public class UserController {
     })
     public ResponseEntity<Void> resetPasswordConfirm(@Valid @RequestBody PasswordResetConfirmRequest request) {
         userService.resetPasswordConfirm(request.token(), request.password());
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(
+            summary = "Change password",
+            description = "Change the password for the authenticated user. The current password and new password must be provided."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "Password changed successfully.",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Invalid or expired authentication",
+                    content = @Content
+            )
+    })
+    @PostMapping("/change-password")
+    public ResponseEntity<Void> changePassword(Authentication authentication,
+                                               @Valid @RequestBody PasswordChangeRequest request) {
+        Long userId = Long.valueOf(authentication.getName());
+        userService.changePassword(userId, request.currentPassword(), request.newPassword());
         return ResponseEntity.noContent().build();
     }
 }

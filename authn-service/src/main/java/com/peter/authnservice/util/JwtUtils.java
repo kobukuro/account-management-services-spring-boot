@@ -110,4 +110,19 @@ public class JwtUtils {
                 .withExpiresAt(new Date(System.currentTimeMillis() + resetPasswordTokenExpiration))
                 .sign(com.auth0.jwt.algorithms.Algorithm.HMAC256(secret));
     }
+
+    public Long getUserIdFromToken(String token) {
+        if (token == null || token.isEmpty()) {
+            throw new IllegalArgumentException("Token cannot be null or empty");
+        }
+
+        try {
+            DecodedJWT jwt = verifier.verify(token);
+            return Long.parseLong(jwt.getSubject());
+        } catch (JWTVerificationException e) {
+            throw new IllegalArgumentException("Invalid token", e);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Invalid user ID in token", e);
+        }
+    }
 }
