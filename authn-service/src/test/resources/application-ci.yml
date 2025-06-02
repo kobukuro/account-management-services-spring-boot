@@ -37,3 +37,4 @@ jwt:
     expiration: ${RESET_PASSWORD_TOKEN_EXPIRATION_MILLISECONDS}
 frontend-url: "test-frontend-url-for-ci-environment"
 app-name: "test-app-name-for-ci-environment"
+allowed-origins: ""
