@@ -173,4 +173,22 @@ public class UserServiceImpl implements UserService {
         );
         kafkaTemplate.send("password_change", passwordChangeEvent);
     }
+
+    @Override
+    public String refreshToken(String refreshToken) {
+        if (!jwtUtils.validateToken(refreshToken)) {
+            throw new TokenNotValidException("Invalid or expired refresh token");
+        }
+
+        Long userId = jwtUtils.getUserIdFromToken(refreshToken);
+
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new TokenNotValidException("Invalid or expired refresh token"));
+
+        if (!user.isEnabled()) {
+            throw new TokenNotValidException("Invalid or expired refresh token");
+        }
+
+        return jwtUtils.generateAccessToken(userId);
+    }
 }

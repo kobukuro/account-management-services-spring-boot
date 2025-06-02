@@ -28,6 +28,7 @@ public class SecurityConfig {
             "/api/v1/users/login",
             "/api/v1/users/reset-password",
             "/api/v1/users/reset-password-confirm",
+            "/api/v1/users/refresh-token",
     };
 
     public SecurityConfig(CorsProperties corsProperties, JwtFilter jwtFilter) {
