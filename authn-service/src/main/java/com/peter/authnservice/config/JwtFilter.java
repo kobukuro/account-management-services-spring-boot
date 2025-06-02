@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
@@ -24,6 +25,13 @@ public class JwtFilter extends OncePerRequestFilter {
     public JwtFilter(CustomUserDetailsService userDetailsService, JwtUtils jwtUtils) {
         this.userDetailsService = userDetailsService;
         this.jwtUtils = jwtUtils;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getServletPath();
+        return Arrays.asList(SecurityConfig.PUBLIC_PATHS)
+                .contains(path);
     }
 
     @Override

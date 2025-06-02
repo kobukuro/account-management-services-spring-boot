@@ -19,6 +19,15 @@ public class SecurityConfig {
     private final CorsProperties corsProperties;
     private final JwtFilter jwtFilter;
 
+    public static final String[] PUBLIC_PATHS = {
+            "/authn/v1/api-docs",
+            "/api/v1/users",
+            "/api/v1/users/activation",
+            "/api/v1/users/login",
+            "/api/v1/users/reset-password",
+            "/api/v1/users/reset-password-confirm",
+    };
+
     public SecurityConfig(CorsProperties corsProperties, JwtFilter jwtFilter) {
         this.corsProperties = corsProperties;
         this.jwtFilter = jwtFilter;
@@ -54,10 +63,7 @@ public class SecurityConfig {
                 )
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/authn/v1/api-docs").permitAll()
-                        .requestMatchers("/api/v1/users").permitAll()
-                        .requestMatchers("/api/v1/users/activation").permitAll()
-                        .requestMatchers("/api/v1/users/login").permitAll()
+                        .requestMatchers(PUBLIC_PATHS).permitAll()
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
