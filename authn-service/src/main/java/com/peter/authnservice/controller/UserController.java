@@ -94,6 +94,11 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/resend-activation")
+    public ResponseEntity<Void> resendActivationEmail(@Valid @RequestBody ActivationEmailResendRequest request) {
+        userService.resendActivationEmail(request.email());
+        return ResponseEntity.noContent().build();
+    }
 
     @Operation(
             summary = "Login user",

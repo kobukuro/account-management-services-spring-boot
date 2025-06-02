@@ -77,6 +77,31 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public void resendActivationEmail(String email) {
+        AppUser user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new EmailNotFoundException("Email not found"));
+        if (user.isEnabled()) {
+            throw new EmailAlreadyVerifiedException("This email has already been verified.\nPlease log in to the app.");
+        }
+        String firstName = user.getFirstName();
+        String lastName = user.getLastName();
+        Event resendActivationEvent = new Event(
+                new UserDetails(firstName, lastName, email),
+                new Email("Account activation on " + appName,
+                        "email/verification-email",
+                        Map.of(
+                                "appName", appName,
+                                "firstName", firstName,
+                                "lastName", lastName,
+                                "verificationLink", frontendUrl + "/activate?token=" + jwtUtils.generateVerificationToken(email),
+                                "expirationHours", verificationTokenExpirationInMilliseconds / 3600000
+                        )
+                )
+        );
+        kafkaTemplate.send("resend_activation", resendActivationEvent);
+    }
+
+    @Override
     public TokenPair login(String email, String password) {
         AppUser user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid credentials"));
