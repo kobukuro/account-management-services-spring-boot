@@ -208,4 +208,11 @@ public class UserController {
         userService.changePassword(userId, request.currentPassword(), request.newPassword());
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<TokenRefreshResponse> refreshToken(@Valid @RequestBody TokenRefreshRequest request) {
+        String newAccessToken = userService.refreshToken(request.refreshToken());
+        TokenRefreshResponse response = new TokenRefreshResponse(newAccessToken);
+        return ResponseEntity.ok(response);
+    }
 }

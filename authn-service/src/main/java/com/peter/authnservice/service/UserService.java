@@ -15,4 +15,6 @@ public interface UserService {
     void resetPasswordConfirm(String token, String password);
 
     void changePassword(Long userId, String currentPassword, String newPassword);
+
+    String refreshToken(String refreshToken);
 }
