@@ -30,7 +30,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        String path = request.getServletPath();
+        String path = request.getRequestURI();
         return Arrays.stream(SecurityConfig.PUBLIC_PATHS)
                 .anyMatch(pattern ->
                         new AntPathMatcher().match(pattern, path));
