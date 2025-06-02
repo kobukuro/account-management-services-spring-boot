@@ -26,7 +26,7 @@ public class NotificationServiceApplication {
         SpringApplication.run(NotificationServiceApplication.class, args);
     }
     @RetryableTopic
-    @KafkaListener(topics = {"user_registration", "password_reset", "password_reset_confirm"})
+    @KafkaListener(topics = {"user_registration", "password_reset", "password_reset_confirm", "password_change"})
     public void handleNotification(Event event, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic, @Header(KafkaHeaders.OFFSET) long offset) throws JsonProcessingException {
         log.info("Received: {} from {} offset {}", new ObjectMapper().writeValueAsString(event), topic, offset);
         notificationService.processNotification(event);
