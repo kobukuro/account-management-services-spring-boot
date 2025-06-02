@@ -185,6 +185,22 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(
+            summary = "Change password",
+            description = "Change the password for the authenticated user. The current password and new password must be provided."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "Password changed successfully.",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Invalid or expired authentication",
+                    content = @Content
+            )
+    })
     @PostMapping("/change-password")
     public ResponseEntity<Void> changePassword(Authentication authentication,
                                                @Valid @RequestBody PasswordChangeRequest request) {

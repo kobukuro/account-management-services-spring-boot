@@ -20,7 +20,9 @@ public class SecurityConfig {
     private final JwtFilter jwtFilter;
 
     public static final String[] PUBLIC_PATHS = {
-            "/authn/v1/api-docs",
+            "/authn/v1/api-docs/**",
+            "/authn/swagger-ui/**",
+            "/authn/swagger-ui.html",
             "/api/v1/users",
             "/api/v1/users/activation",
             "/api/v1/users/login",
