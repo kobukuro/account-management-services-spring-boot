@@ -1,6 +1,7 @@
 package com.peter.authnservice;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.peter.authnservice.domain.dto.ActivationEmailResendRequest;
 import com.peter.authnservice.domain.dto.UserActivationRequest;
 import com.peter.authnservice.domain.dto.UserRegistrationRequest;
 import com.peter.authnservice.domain.entity.AppUser;
@@ -26,7 +27,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Duration;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -42,7 +43,7 @@ public class UserRegistrationIntegrationTest {
 
     private static final String REGISTER_API_PATH = "/api/v1/users";
     private static final String ACTIVATION_API_PATH = "/api/v1/users/activation";
-    private static final String KAFKA_TOPIC = "user_registration";
+    private static final String RESEND_ACTIVATION_API_PATH = "/api/v1/users/resend-activation";
 
     @Autowired
     private MockMvc mockMvc;
@@ -90,7 +91,7 @@ public class UserRegistrationIntegrationTest {
                         new JsonDeserializer<>(Event.class, false));
 
         consumer = consumerFactory.createConsumer();
-        consumer.subscribe(Collections.singletonList(KAFKA_TOPIC));
+        consumer.subscribe(Arrays.asList("user_registration", "resend_activation"));
     }
 
     @BeforeEach
@@ -471,5 +472,135 @@ public class UserRegistrationIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(activationRequest)))
                 .andExpect(status().isNotFound());
+    }
+
+    /**
+     * Test successful resend activation email for unverified user
+     */
+    @Test
+    void whenResendActivationForUnverifiedUser_thenReturns204AndSendsKafkaMessage() throws Exception {
+        // First register a user (but don't activate)
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest)))
+                .andExpect(status().isCreated());
+
+        // Clear registration messages
+        consumer.poll(Duration.ofSeconds(5));
+
+        ActivationEmailResendRequest resendRequest = new ActivationEmailResendRequest(testEmail);
+
+        // Resend activation email
+        mockMvc.perform(post(RESEND_ACTIVATION_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resendRequest)))
+                .andExpect(status().isNoContent());
+
+        // Verify Kafka message was sent
+        ConsumerRecords<String, Event> records =
+                consumer.poll(Duration.ofSeconds(5));
+        assertFalse(records.isEmpty());
+
+        ConsumerRecord<String, Event> record = records.iterator().next();
+        Event event = record.value();
+        assertEquals(testEmail, event.userDetails().email());
+        assertEquals(firstName, event.userDetails().firstName());
+        assertEquals(lastName, event.userDetails().lastName());
+        assertEquals("Account activation on " + appName, event.email().subject());
+        assertEquals("email/verification-email", event.email().templateName());
+        assertEquals(appName, event.email().model().get("appName"));
+        assertEquals(firstName, event.email().model().get("firstName"));
+        assertEquals(lastName, event.email().model().get("lastName"));
+
+        Long expectedHours = verificationTokenExpirationInMilliseconds / 3600000L;
+        Long actualHours = Long.valueOf(event.email().model().get("expirationHours").toString());
+        assertEquals(expectedHours, actualHours);
+
+        // Verify verification link contains a token
+        String verificationLink = (String) event.email().model().get("verificationLink");
+        assertTrue(verificationLink.contains("token="));
+    }
+
+    /**
+     * Test resend activation email for non-existent email
+     */
+    @Test
+    void whenResendActivationForNonExistentEmail_thenReturns404() throws Exception {
+        ActivationEmailResendRequest resendRequest = new ActivationEmailResendRequest("nonexistent@example.com");
+
+        mockMvc.perform(post(RESEND_ACTIVATION_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resendRequest)))
+                .andExpect(status().isNotFound());
+    }
+
+    /**
+     * Test resend activation email for already verified user
+     */
+    @Test
+    void whenResendActivationForVerifiedUser_thenReturns409() throws Exception {
+        // Register and activate user
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest)))
+                .andExpect(status().isCreated());
+
+        String validToken = jwtUtils.generateVerificationToken(testEmail);
+        UserActivationRequest activationRequest = new UserActivationRequest(validToken);
+
+        mockMvc.perform(post(ACTIVATION_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(activationRequest)))
+                .andExpect(status().isNoContent());
+
+        // Clear any pending messages
+        consumer.poll(Duration.ofSeconds(5));
+
+        // Try to resend activation email for already verified user
+        ActivationEmailResendRequest resendRequest = new ActivationEmailResendRequest(testEmail);
+
+        mockMvc.perform(post(RESEND_ACTIVATION_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resendRequest)))
+                .andExpect(status().isConflict());
+    }
+
+    /**
+     * Test resend activation email with invalid email format
+     */
+    @Test
+    void whenResendActivationWithInvalidEmail_thenReturns400() throws Exception {
+        ActivationEmailResendRequest invalidRequest = new ActivationEmailResendRequest("invalid-email");
+
+        mockMvc.perform(post(RESEND_ACTIVATION_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * Test resend activation email with empty email
+     */
+    @Test
+    void whenResendActivationWithEmptyEmail_thenReturns400() throws Exception {
+        ActivationEmailResendRequest emptyEmailRequest = new ActivationEmailResendRequest("");
+
+        mockMvc.perform(post(RESEND_ACTIVATION_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(emptyEmailRequest)))
+                .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * Test resend activation email with null email
+     */
+    @Test
+    void whenResendActivationWithNullEmail_thenReturns400() throws Exception {
+        String requestBody = "{\"email\": null}";
+
+        mockMvc.perform(post(RESEND_ACTIVATION_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest());
     }
 }

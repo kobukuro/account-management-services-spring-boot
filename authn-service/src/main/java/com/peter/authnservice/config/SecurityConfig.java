@@ -25,6 +25,7 @@ public class SecurityConfig {
             "/authn/swagger-ui.html",
             "/api/v1/users",
             "/api/v1/users/activation",
+            "/api/v1/users/resend-activation",
             "/api/v1/users/login",
             "/api/v1/users/reset-password",
             "/api/v1/users/reset-password-confirm",

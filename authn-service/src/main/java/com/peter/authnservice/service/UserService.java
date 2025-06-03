@@ -8,6 +8,8 @@ public interface UserService {
 
     void activateAccount(String token);
 
+    void resendActivationEmail(String email);
+
     TokenPair login(String email, String password);
 
     void resetPassword(String email);
