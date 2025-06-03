@@ -94,6 +94,27 @@ public class UserController {
         return ResponseEntity.noContent().build();
     }
 
+    @Operation(
+            summary = "Resend activation email",
+            description = "Resend the activation email to the user if they haven't activated their account yet."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "204",
+                    description = "Activation email resent successfully",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "Email not found",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "Email has already been verified",
+                    content = @Content
+            )
+    })
     @PostMapping("/resend-activation")
     public ResponseEntity<Void> resendActivationEmail(@Valid @RequestBody ActivationEmailResendRequest request) {
         userService.resendActivationEmail(request.email());
