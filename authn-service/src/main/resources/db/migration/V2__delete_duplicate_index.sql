@@ -1,0 +1,1 @@
+DROP INDEX IF EXISTS idx_app_user_email;
