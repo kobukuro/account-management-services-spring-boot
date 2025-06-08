@@ -15,9 +15,6 @@ import java.util.ArrayList;
 @Setter
 @NoArgsConstructor
 @Entity
-@Table(indexes = {
-        @Index(name = "idx_app_user_email", columnList = "templates/email")
-})
 public class AppUser implements UserDetails {
     @Id
     @SequenceGenerator(
