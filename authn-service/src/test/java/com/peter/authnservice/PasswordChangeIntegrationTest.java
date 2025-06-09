@@ -30,6 +30,7 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -122,7 +123,7 @@ public class PasswordChangeIntegrationTest {
     /**
      * Helper method to generate access token for user
      */
-    private String generateAccessToken(Long userId) {
+    private String generateAccessToken(UUID userId) {
         return jwtUtils.generateAccessToken(userId);
     }
 
@@ -222,7 +223,7 @@ public class PasswordChangeIntegrationTest {
     @Test
     void whenNonExistentUserId_thenReturns401() throws Exception {
         createActivatedUser();
-        String accessToken = generateAccessToken(999L); // Non-existent user ID
+        String accessToken = generateAccessToken(UUID.randomUUID()); // Generate token for non-existent user
 
         PasswordChangeRequest request = new PasswordChangeRequest(currentPassword, newPassword);
 

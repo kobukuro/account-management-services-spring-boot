@@ -17,6 +17,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.UUID;
 
 @Component
 public class JwtFilter extends OncePerRequestFilter {
@@ -50,7 +51,7 @@ public class JwtFilter extends OncePerRequestFilter {
                 response.getWriter().write("{\"message\":\"Invalid or expired token\"}");
                 return;
             }
-            Long userId = jwtUtils.getUserIdFromToken(jwt);
+            UUID userId = jwtUtils.getUserIdFromToken(jwt);
             try {
                 UserDetails userDetails = userDetailsService.loadUserByUserId(userId);
                 if (userId != null) {

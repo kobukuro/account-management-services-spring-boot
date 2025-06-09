@@ -3,6 +3,8 @@ package com.peter.authnservice.service;
 import com.peter.authnservice.domain.dto.TokenPair;
 import com.peter.authnservice.domain.entity.AppUser;
 
+import java.util.UUID;
+
 public interface UserService {
     AppUser register(String firstName, String lastName, String email, String password);
 
@@ -16,7 +18,7 @@ public interface UserService {
 
     void resetPasswordConfirm(String token, String password);
 
-    void changePassword(Long userId, String currentPassword, String newPassword);
+    void changePassword(UUID userId, String currentPassword, String newPassword);
 
     String refreshToken(String refreshToken);
 }

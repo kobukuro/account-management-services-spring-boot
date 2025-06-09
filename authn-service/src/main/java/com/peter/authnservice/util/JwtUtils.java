@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
+import java.util.UUID;
 
 @Component
 public class JwtUtils {
@@ -90,16 +91,16 @@ public class JwtUtils {
         }
     }
 
-    public String generateAccessToken(Long userId) {
+    public String generateAccessToken(UUID userId) {
         return JWT.create()
-                .withSubject(Long.toString(userId))
+                .withSubject(userId.toString())
                 .withExpiresAt(new Date(System.currentTimeMillis() + accessTokenExpiration))
                 .sign(com.auth0.jwt.algorithms.Algorithm.HMAC256(secret));
     }
 
-    public String generateRefreshToken(Long userId) {
+    public String generateRefreshToken(UUID userId) {
         return JWT.create()
-                .withSubject(Long.toString(userId))
+                .withSubject(userId.toString())
                 .withExpiresAt(new Date(System.currentTimeMillis() + refreshTokenExpiration))
                 .sign(com.auth0.jwt.algorithms.Algorithm.HMAC256(secret));
     }
@@ -111,14 +112,14 @@ public class JwtUtils {
                 .sign(com.auth0.jwt.algorithms.Algorithm.HMAC256(secret));
     }
 
-    public Long getUserIdFromToken(String token) {
+    public UUID getUserIdFromToken(String token) {
         if (token == null || token.isEmpty()) {
             throw new IllegalArgumentException("Token cannot be null or empty");
         }
 
         try {
             DecodedJWT jwt = verifier.verify(token);
-            return Long.parseLong(jwt.getSubject());
+            return jwt.getSubject() == null ? null : UUID.fromString(jwt.getSubject());
         } catch (JWTVerificationException e) {
             throw new IllegalArgumentException("Invalid token", e);
         } catch (NumberFormatException e) {

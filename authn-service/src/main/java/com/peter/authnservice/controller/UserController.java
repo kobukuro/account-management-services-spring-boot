@@ -19,6 +19,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.UUID;
+
 @Tag(name = "User Management", description = "APIs for managing users")
 @AllArgsConstructor
 @RestController
@@ -230,7 +232,7 @@ public class UserController {
     @PostMapping("/change-password")
     public ResponseEntity<Void> changePassword(Authentication authentication,
                                                @Valid @RequestBody PasswordChangeRequest request) {
-        Long userId = Long.valueOf(authentication.getName());
+        UUID userId = authentication.getName() != null ? UUID.fromString(authentication.getName()) : null;
         userService.changePassword(userId, request.currentPassword(), request.newPassword());
         return ResponseEntity.noContent().build();
     }
