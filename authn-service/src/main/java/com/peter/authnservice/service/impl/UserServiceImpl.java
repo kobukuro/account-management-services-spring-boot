@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 @Transactional // Utilize Spring's transaction management to roll back the transaction if an exception occurs
@@ -111,7 +112,7 @@ public class UserServiceImpl implements UserService {
         if (!BCrypt.checkpw(password, user.getPassword())) {
             throw new InvalidCredentialsException("Invalid credentials");
         }
-        Long userId = user.getId();
+        UUID userId = user.getId();
         String accessToken = jwtUtils.generateAccessToken(userId);
         String refreshToken = jwtUtils.generateRefreshToken(userId);
         return new TokenPair(accessToken, refreshToken);
@@ -173,7 +174,7 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void changePassword(Long userId, String currentPassword, String newPassword) {
+    public void changePassword(UUID userId, String currentPassword, String newPassword) {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new TokenNotValidException("Invalid or expired token"));
         if (!BCrypt.checkpw(currentPassword, user.getPassword())) {
@@ -205,7 +206,7 @@ public class UserServiceImpl implements UserService {
             throw new TokenNotValidException("Invalid or expired refresh token");
         }
 
-        Long userId = jwtUtils.getUserIdFromToken(refreshToken);
+        UUID userId = jwtUtils.getUserIdFromToken(refreshToken);
 
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new TokenNotValidException("Invalid or expired refresh token"));

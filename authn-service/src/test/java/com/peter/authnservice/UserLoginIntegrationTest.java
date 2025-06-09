@@ -16,6 +16,8 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.util.UUID;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -241,7 +243,7 @@ public class UserLoginIntegrationTest {
     @Test
     void whenTokenWithNonExistentUserId_thenReturns401() throws Exception {
         // Generate token with non-existent user ID
-        Long nonExistentUserId = 99999L;
+        UUID nonExistentUserId = UUID.randomUUID();
         String tokenWithNonExistentUser = jwtUtils.generateRefreshToken(nonExistentUserId);
 
         TokenRefreshRequest request = new TokenRefreshRequest(tokenWithNonExistentUser);

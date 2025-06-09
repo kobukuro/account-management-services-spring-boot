@@ -6,10 +6,12 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.UuidGenerator;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -17,13 +19,9 @@ import java.util.ArrayList;
 @Entity
 public class AppUser implements UserDetails {
     @Id
-    @SequenceGenerator(
-            name = "app_user_sequence",
-            sequenceName = "app_user_sequence",
-            allocationSize = 1
-    )
-    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "app_user_sequence")
-    private Long id;
+    @GeneratedValue
+    @UuidGenerator
+    private UUID id;
     private String firstName;
     private String lastName;
 
