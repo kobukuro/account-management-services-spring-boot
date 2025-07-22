@@ -42,6 +42,9 @@ public class UserServiceImpl implements UserService {
         if (userRepository.existsByEmail(email)) {
             throw new EmailAlreadyExistsException("This email has been registered.");
         }
+
+        UUID userId = UUID.randomUUID();
+
         Event Event = new Event(
                 new UserDetails(firstName, lastName, email),
                 new Email("Account activation on " + appName,
@@ -50,14 +53,14 @@ public class UserServiceImpl implements UserService {
                                 "appName", appName,
                                 "firstName", firstName,
                                 "lastName", lastName,
-                                "verificationLink", frontendUrl + "/activate?token=" + jwtUtils.generateVerificationToken(email),
+                                "verificationLink", frontendUrl + "/activate?token=" + jwtUtils.generateVerificationToken(userId),
                                 "expirationHours", verificationTokenExpirationInMilliseconds / 3600000
                         )
                 )
         );
         kafkaTemplate.send("user_registration", Event);
         String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
-        return userRepository.save(new AppUser(firstName, lastName, email,
+        return userRepository.save(new AppUser(userId, firstName, lastName, email,
                 hashedPassword, false));
     }
 
@@ -66,12 +69,12 @@ public class UserServiceImpl implements UserService {
         if (!jwtUtils.validateToken(token)) {
             throw new TokenNotValidException("Invalid or expired verification token");
         }
-        String email = jwtUtils.getEmailFromToken(token);
-        AppUser user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new EmailNotFoundException("Email not found"));
+        UUID userId = jwtUtils.getUserIdFromToken(token);
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         if (user.getEnabled()) {
-            throw new EmailAlreadyVerifiedException("This email has already been verified.");
+            throw new UserAlreadyVerifiedException("This user has already been verified.");
         }
         user.setEnabled(true);
         userRepository.save(user);
@@ -94,7 +97,7 @@ public class UserServiceImpl implements UserService {
                                 "appName", appName,
                                 "firstName", firstName,
                                 "lastName", lastName,
-                                "verificationLink", frontendUrl + "/activate?token=" + jwtUtils.generateVerificationToken(email),
+                                "verificationLink", frontendUrl + "/activate?token=" + jwtUtils.generateVerificationToken(user.getId()),
                                 "expirationHours", verificationTokenExpirationInMilliseconds / 3600000
                         )
                 )

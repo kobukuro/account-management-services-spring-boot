@@ -48,7 +48,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
     }
 
-    @ExceptionHandler({EmailNotFoundException.class})
+    @ExceptionHandler({EmailNotFoundException.class, UserNotFoundException.class})
     public ResponseEntity<ErrorResponse> handleNotFound(Exception ex) {
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage()
@@ -56,7 +56,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
-    @ExceptionHandler({EmailAlreadyExistsException.class, EmailAlreadyVerifiedException.class})
+    @ExceptionHandler({EmailAlreadyExistsException.class, EmailAlreadyVerifiedException.class, UserAlreadyVerifiedException.class})
     public ResponseEntity<ErrorResponse> handleConflict(Exception ex) {
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage()

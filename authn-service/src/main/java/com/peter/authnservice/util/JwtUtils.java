@@ -50,16 +50,12 @@ public class JwtUtils {
         verifier = JWT.require(algorithm).build();
     }
 
-    public String generateVerificationToken(String email) {
-        if (email == null || email.isEmpty()) {
-            throw new IllegalArgumentException("Email cannot be null or empty");
-        }
-
+    public String generateVerificationToken(UUID userId) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + verificationTokenExpiration);
 
         return JWT.create()
-                .withSubject(email)
+                .withSubject(userId.toString())
                 .withIssuedAt(now)
                 .withExpiresAt(expiryDate)
                 .sign(algorithm);
