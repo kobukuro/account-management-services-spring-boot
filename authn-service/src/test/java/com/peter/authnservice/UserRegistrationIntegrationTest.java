@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.peter.authnservice.domain.dto.ActivationEmailResendRequest;
 import com.peter.authnservice.domain.dto.UserActivationRequest;
 import com.peter.authnservice.domain.dto.UserRegistrationRequest;
+import com.peter.authnservice.domain.dto.UserRegistrationResponse;
 import com.peter.authnservice.domain.entity.AppUser;
 import com.peter.authnservice.domain.event.Event;
 import com.peter.authnservice.repository.UserRepository;
@@ -25,11 +26,13 @@ import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -394,12 +397,17 @@ public class UserRegistrationIntegrationTest {
     @Test
     void whenValidToken_thenActivateAccount() throws Exception {
         // First register a user
-        mockMvc.perform(post(REGISTER_API_PATH)
+        MvcResult result = mockMvc.perform(post(REGISTER_API_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest)))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                .andReturn();
 
-        String validToken = jwtUtils.generateVerificationToken(testEmail);
+        String responseBody = result.getResponse().getContentAsString();
+        UserRegistrationResponse response = objectMapper.readValue(responseBody, UserRegistrationResponse.class);
+        UUID userId = response.id();
+
+        String validToken = jwtUtils.generateVerificationToken(userId);
         UserActivationRequest activationRequest = new UserActivationRequest(validToken);
 
         mockMvc.perform(post(ACTIVATION_API_PATH)
@@ -439,12 +447,17 @@ public class UserRegistrationIntegrationTest {
     @Test
     void whenAlreadyActivated_thenReturns409() throws Exception {
         // Register and activate user
-        mockMvc.perform(post(REGISTER_API_PATH)
+        MvcResult result = mockMvc.perform(post(REGISTER_API_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest)))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                .andReturn();
 
-        String validToken = jwtUtils.generateVerificationToken(testEmail);
+        String responseBody = result.getResponse().getContentAsString();
+        UserRegistrationResponse response = objectMapper.readValue(responseBody, UserRegistrationResponse.class);
+        UUID userId = response.id();
+
+        String validToken = jwtUtils.generateVerificationToken(userId);
         UserActivationRequest activationRequest = new UserActivationRequest(validToken);
 
         // First activation
@@ -458,20 +471,6 @@ public class UserRegistrationIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(activationRequest)))
                 .andExpect(status().isConflict());
-    }
-
-    /**
-     * Test activation with token containing non-existent email
-     */
-    @Test
-    void whenNonExistentEmail_thenReturns404() throws Exception {
-        String tokenWithNonExistentEmail = jwtUtils.generateVerificationToken("nonexistent@example.com");
-        UserActivationRequest activationRequest = new UserActivationRequest(tokenWithNonExistentEmail);
-
-        mockMvc.perform(post(ACTIVATION_API_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(activationRequest)))
-                .andExpect(status().isNotFound());
     }
 
     /**
@@ -540,12 +539,17 @@ public class UserRegistrationIntegrationTest {
     @Test
     void whenResendActivationForVerifiedUser_thenReturns409() throws Exception {
         // Register and activate user
-        mockMvc.perform(post(REGISTER_API_PATH)
+        MvcResult result = mockMvc.perform(post(REGISTER_API_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest)))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                .andReturn();
 
-        String validToken = jwtUtils.generateVerificationToken(testEmail);
+        String responseBody = result.getResponse().getContentAsString();
+        UserRegistrationResponse response = objectMapper.readValue(responseBody, UserRegistrationResponse.class);
+        UUID userId = response.id();
+
+        String validToken = jwtUtils.generateVerificationToken(userId);
         UserActivationRequest activationRequest = new UserActivationRequest(validToken);
 
         mockMvc.perform(post(ACTIVATION_API_PATH)

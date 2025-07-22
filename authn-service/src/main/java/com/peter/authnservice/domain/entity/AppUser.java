@@ -6,7 +6,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.annotations.UuidGenerator;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.ZonedDateTime;
@@ -19,8 +18,6 @@ import java.util.UUID;
 @Entity
 public class AppUser implements UserDetails {
     @Id
-    @GeneratedValue
-    @UuidGenerator
     private UUID id;
     private String firstName;
     private String lastName;
@@ -42,7 +39,17 @@ public class AppUser implements UserDetails {
     @Column(nullable = false)
     private ZonedDateTime lastUpdatedAt;
 
+    public AppUser(UUID id, String firstName, String lastName, String email, String password, Boolean enabled) {
+        this.id = id;
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.email = email;
+        this.password = password;
+        this.enabled = enabled;
+    }
+
     public AppUser(String firstName, String lastName, String email, String password, Boolean enabled) {
+        this.id = UUID.randomUUID(); // Generate a new UUID for the user
         this.firstName = firstName;
         this.lastName = lastName;
         this.email = email;
