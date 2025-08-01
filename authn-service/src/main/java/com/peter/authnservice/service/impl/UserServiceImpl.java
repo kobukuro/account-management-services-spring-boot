@@ -138,7 +138,7 @@ public class UserServiceImpl implements UserService {
                                 "appName", appName,
                                 "firstName", firstName,
                                 "lastName", lastName,
-                                "resetPasswordLink", frontendUrl + "/reset-password?token=" + jwtUtils.generateResetPasswordToken(email),
+                                "resetPasswordLink", frontendUrl + "/reset-password?token=" + jwtUtils.generateResetPasswordToken(user.getId()),
                                 "expirationMinutes", (int) (resetPasswordTokenExpirationInMilliseconds / 60000)
                         )
                 )
@@ -151,9 +151,9 @@ public class UserServiceImpl implements UserService {
         if (!jwtUtils.validateToken(token)) {
             throw new TokenNotValidException("Invalid or expired reset password token");
         }
-        String email = jwtUtils.getEmailFromToken(token);
-        AppUser user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new EmailNotFoundException("Email not found"));
+        UUID userId = jwtUtils.getUserIdFromToken(token);
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
         if (!user.isEnabled()) {
             throw new EmailNotVerifiedException("This email has not been verified.\nPlease check your email for the verification link.");
         }
@@ -162,6 +162,7 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
         String firstName = user.getFirstName();
         String lastName = user.getLastName();
+        String email = user.getEmail();
         Event passwordResetConfirmEvent = new Event(
                 new UserDetails(firstName, lastName, email),
                 new Email("Password reset confirmation on " + appName,

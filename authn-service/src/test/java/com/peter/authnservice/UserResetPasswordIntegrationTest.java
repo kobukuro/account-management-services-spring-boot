@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.peter.authnservice.domain.dto.PasswordResetConfirmRequest;
 import com.peter.authnservice.domain.dto.PasswordResetRequest;
 import com.peter.authnservice.domain.dto.UserRegistrationRequest;
+import com.peter.authnservice.domain.dto.UserRegistrationResponse;
 import com.peter.authnservice.domain.entity.AppUser;
 import com.peter.authnservice.domain.event.Event;
 import com.peter.authnservice.repository.UserRepository;
@@ -26,11 +27,13 @@ import org.springframework.kafka.support.serializer.JsonDeserializer;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -214,7 +217,7 @@ public class UserResetPasswordIntegrationTest {
         user.setEnabled(true);
         userRepository.save(user);
 
-        String resetToken = jwtUtils.generateResetPasswordToken(testEmail);
+        String resetToken = jwtUtils.generateResetPasswordToken(user.getId());
         String newPassword = "NewPassword123!";
         PasswordResetConfirmRequest confirmRequest = new PasswordResetConfirmRequest(
                 resetToken, newPassword);
@@ -260,12 +263,17 @@ public class UserResetPasswordIntegrationTest {
     @Test
     void whenResetPasswordConfirmWithUnverifiedEmail_thenReturns403() throws Exception {
         // Register user but don't enable
-        mockMvc.perform(post(REGISTER_API_PATH)
+        MvcResult result = mockMvc.perform(post(REGISTER_API_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest)))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                .andReturn();
 
-        String resetToken = jwtUtils.generateResetPasswordToken(testEmail);
+        String responseBody = result.getResponse().getContentAsString();
+        UserRegistrationResponse response = objectMapper.readValue(responseBody, UserRegistrationResponse.class);
+        UUID userId = response.id();
+
+        String resetToken = jwtUtils.generateResetPasswordToken(userId);
         PasswordResetConfirmRequest confirmRequest = new PasswordResetConfirmRequest(
                 resetToken, "NewPassword123!");
 
@@ -280,7 +288,9 @@ public class UserResetPasswordIntegrationTest {
      */
     @Test
     void whenEmptyPasswordInConfirmation_thenReturns400() throws Exception {
-        String resetToken = jwtUtils.generateResetPasswordToken(testEmail);
+        UUID userId = userRepository.save(new AppUser(
+                firstName, lastName, testEmail, BCrypt.hashpw(password, BCrypt.gensalt()), true)).getId();
+        String resetToken = jwtUtils.generateResetPasswordToken(userId);
         PasswordResetConfirmRequest confirmRequest = new PasswordResetConfirmRequest(
                 resetToken, "");
 
@@ -305,7 +315,7 @@ public class UserResetPasswordIntegrationTest {
         user.setEnabled(true);
         userRepository.save(user);
 
-        String resetToken = jwtUtils.generateResetPasswordToken(testEmail);
+        String resetToken = jwtUtils.generateResetPasswordToken(user.getId());
 
         PasswordResetConfirmRequest shortPassword = new PasswordResetConfirmRequest(
                 resetToken, "Ab1!xyz");
@@ -331,7 +341,7 @@ public class UserResetPasswordIntegrationTest {
         user.setEnabled(true);
         userRepository.save(user);
 
-        String resetToken = jwtUtils.generateResetPasswordToken(testEmail);
+        String resetToken = jwtUtils.generateResetPasswordToken(user.getId());
 
         PasswordResetConfirmRequest noUppercase = new PasswordResetConfirmRequest(
                 resetToken, "password123!");
@@ -357,7 +367,7 @@ public class UserResetPasswordIntegrationTest {
         user.setEnabled(true);
         userRepository.save(user);
 
-        String resetToken = jwtUtils.generateResetPasswordToken(testEmail);
+        String resetToken = jwtUtils.generateResetPasswordToken(user.getId());
 
         PasswordResetConfirmRequest noLowercase = new PasswordResetConfirmRequest(
                 resetToken, "PASSWORD123!");
@@ -383,7 +393,7 @@ public class UserResetPasswordIntegrationTest {
         user.setEnabled(true);
         userRepository.save(user);
 
-        String resetToken = jwtUtils.generateResetPasswordToken(testEmail);
+        String resetToken = jwtUtils.generateResetPasswordToken(user.getId());
 
         PasswordResetConfirmRequest noNumber = new PasswordResetConfirmRequest(
                 resetToken, "Password!!!");
@@ -409,7 +419,7 @@ public class UserResetPasswordIntegrationTest {
         user.setEnabled(true);
         userRepository.save(user);
 
-        String resetToken = jwtUtils.generateResetPasswordToken(testEmail);
+        String resetToken = jwtUtils.generateResetPasswordToken(user.getId());
 
         PasswordResetConfirmRequest noSpecial = new PasswordResetConfirmRequest(
                 resetToken, "Password123");
@@ -435,7 +445,7 @@ public class UserResetPasswordIntegrationTest {
         user.setEnabled(true);
         userRepository.save(user);
 
-        String resetToken = jwtUtils.generateResetPasswordToken(testEmail);
+        String resetToken = jwtUtils.generateResetPasswordToken(user.getId());
 
         PasswordResetConfirmRequest withWhitespace = new PasswordResetConfirmRequest(
                 resetToken, "Password 123!");
