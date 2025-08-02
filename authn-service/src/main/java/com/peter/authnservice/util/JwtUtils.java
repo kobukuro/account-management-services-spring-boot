@@ -50,15 +50,32 @@ public class JwtUtils {
         verifier = JWT.require(algorithm).build();
     }
 
-    public String generateVerificationToken(UUID userId) {
+    private String generateToken(UUID userId, long expiration) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + verificationTokenExpiration);
+        Date expiryDate = new Date(now.getTime() + expiration);
 
         return JWT.create()
                 .withSubject(userId.toString())
                 .withIssuedAt(now)
                 .withExpiresAt(expiryDate)
                 .sign(algorithm);
+    }
+
+    public String generateVerificationToken(UUID userId) {
+        return generateToken(userId, verificationTokenExpiration);
+    }
+
+
+    public String generateAccessToken(UUID userId) {
+        return generateToken(userId, accessTokenExpiration);
+    }
+
+    public String generateRefreshToken(UUID userId) {
+        return generateToken(userId, refreshTokenExpiration);
+    }
+
+    public String generateResetPasswordToken(UUID userId) {
+        return generateToken(userId, resetPasswordTokenExpiration);
     }
 
     public boolean validateToken(String token) {
@@ -72,27 +89,6 @@ public class JwtUtils {
         } catch (JWTVerificationException e) {
             return false;
         }
-    }
-
-    public String generateAccessToken(UUID userId) {
-        return JWT.create()
-                .withSubject(userId.toString())
-                .withExpiresAt(new Date(System.currentTimeMillis() + accessTokenExpiration))
-                .sign(com.auth0.jwt.algorithms.Algorithm.HMAC256(secret));
-    }
-
-    public String generateRefreshToken(UUID userId) {
-        return JWT.create()
-                .withSubject(userId.toString())
-                .withExpiresAt(new Date(System.currentTimeMillis() + refreshTokenExpiration))
-                .sign(com.auth0.jwt.algorithms.Algorithm.HMAC256(secret));
-    }
-
-    public String generateResetPasswordToken(UUID userId) {
-        return JWT.create()
-                .withSubject(userId.toString())
-                .withExpiresAt(new Date(System.currentTimeMillis() + resetPasswordTokenExpiration))
-                .sign(com.auth0.jwt.algorithms.Algorithm.HMAC256(secret));
     }
 
     public UUID getUserIdFromToken(String token) {
