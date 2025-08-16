@@ -40,7 +40,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
 
-    @ExceptionHandler({EmailNotVerifiedException.class})
+    @ExceptionHandler({EmailNotVerifiedException.class, UserAccountDisabledException.class})
     public ResponseEntity<ErrorResponse> handleForbidden(Exception ex) {
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage()

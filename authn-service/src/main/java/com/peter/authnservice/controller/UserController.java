@@ -58,7 +58,7 @@ public class UserController {
         AppUser registeredUser = userService.register(request.firstName(), request.lastName(), request.email(), request.password());
         UserRegistrationResponse response = new UserRegistrationResponse(
                 registeredUser.getId(),
-                registeredUser.getEmail(),
+                request.email(),
                 registeredUser.getCreatedAt()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);

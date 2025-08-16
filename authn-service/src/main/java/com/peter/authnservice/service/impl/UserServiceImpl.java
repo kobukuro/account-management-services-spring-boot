@@ -2,8 +2,11 @@ package com.peter.authnservice.service.impl;
 
 import com.peter.authnservice.domain.dto.TokenPair;
 import com.peter.authnservice.domain.entity.AppUser;
+import com.peter.authnservice.domain.entity.AuthenticationType;
+import com.peter.authnservice.domain.entity.UserAuthentication;
 import com.peter.authnservice.domain.event.*;
 import com.peter.authnservice.exception.*;
+import com.peter.authnservice.repository.UserAuthenticationRepository;
 import com.peter.authnservice.repository.UserRepository;
 import com.peter.authnservice.service.UserService;
 import com.peter.authnservice.util.JwtUtils;
@@ -16,10 +19,13 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Map;
 import java.util.UUID;
 
+import static com.peter.authnservice.domain.entity.UserAuthentication.createLocalAuth;
+
 @Service
 @Transactional // Utilize Spring's transaction management to roll back the transaction if an exception occurs
 public class UserServiceImpl implements UserService {
     private final UserRepository userRepository;
+    private final UserAuthenticationRepository userAuthenticationRepository;
     private final JwtUtils jwtUtils;
     @Value("${app-name}")
     private String appName;
@@ -31,15 +37,19 @@ public class UserServiceImpl implements UserService {
     private String frontendUrl;
     private final KafkaTemplate<String, Event> kafkaTemplate;
 
-    public UserServiceImpl(UserRepository userRepository, JwtUtils jwtUtils, KafkaTemplate<String, Event> kafkaTemplate) {
+    public UserServiceImpl(UserRepository userRepository,
+                           UserAuthenticationRepository userAuthenticationRepository,
+                           JwtUtils jwtUtils,
+                           KafkaTemplate<String, Event> kafkaTemplate) {
         this.userRepository = userRepository;
+        this.userAuthenticationRepository = userAuthenticationRepository;
         this.jwtUtils = jwtUtils;
         this.kafkaTemplate = kafkaTemplate;
     }
 
     @Override
     public AppUser register(String firstName, String lastName, String email, String password) {
-        if (userRepository.existsByEmail(email)) {
+        if (userAuthenticationRepository.findByEmailAndType(email, AuthenticationType.LOCAL).isPresent()) {
             throw new EmailAlreadyExistsException("This email has been registered.");
         }
 
@@ -60,8 +70,12 @@ public class UserServiceImpl implements UserService {
         );
         kafkaTemplate.send("user_registration", Event);
         String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
-        return userRepository.save(new AppUser(userId, firstName, lastName, email,
-                hashedPassword, false));
+        AppUser newUser = new AppUser(userId, firstName, lastName, true);
+        userRepository.save(newUser);
+        UserAuthentication userAuth = createLocalAuth(newUser, email, hashedPassword);
+        userAuthenticationRepository.save(userAuth);
+
+        return newUser;
     }
 
     @Override
@@ -70,22 +84,27 @@ public class UserServiceImpl implements UserService {
             throw new TokenNotValidException("Invalid or expired verification token");
         }
         UUID userId = jwtUtils.getUserIdFromToken(token);
-        AppUser user = userRepository.findById(userId)
+
+        UserAuthentication userAuth = userAuthenticationRepository.findByUserIdAndType(userId, AuthenticationType.LOCAL)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        if (user.getEnabled()) {
+        if (userAuth.getEnabled()) {
             throw new UserAlreadyVerifiedException("This user has already been verified.");
         }
-        user.setEnabled(true);
-        userRepository.save(user);
+        userAuth.setEnabled(true);
+        userAuthenticationRepository.save(userAuth);
     }
 
     @Override
     public void resendActivationEmail(String email) {
-        AppUser user = userRepository.findByEmail(email)
+        UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(email, AuthenticationType.LOCAL)
                 .orElseThrow(() -> new EmailNotFoundException("Email not found"));
-        if (user.isEnabled()) {
-            throw new EmailAlreadyVerifiedException("This email has already been verified.\nPlease log in to the app.");
+        AppUser user = userAuth.getUser();
+        if (!user.getEnabled()) {
+            throw new UserAccountDisabledException("User account is disabled.");
+        }
+        if (userAuth.getEnabled()) {
+            throw new UserAlreadyVerifiedException("This user has already been verified.");
         }
         String firstName = user.getFirstName();
         String lastName = user.getLastName();
@@ -107,14 +126,21 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public TokenPair login(String email, String password) {
-        AppUser user = userRepository.findByEmail(email)
+        UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(email, AuthenticationType.LOCAL)
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid credentials"));
-        if (!user.isEnabled()) {
+
+        AppUser user = userAuth.getUser();
+        if (!user.getEnabled()) {
+            throw new UserAccountDisabledException("User account is disabled.");
+        }
+
+        if (!userAuth.getEnabled()) {
             throw new EmailNotVerifiedException("This email has not been verified.\nPlease check your email for the verification link.");
         }
-        if (!BCrypt.checkpw(password, user.getPassword())) {
+        if (!BCrypt.checkpw(password, userAuth.getPassword())) {
             throw new InvalidCredentialsException("Invalid credentials");
         }
+
         UUID userId = user.getId();
         String accessToken = jwtUtils.generateAccessToken(userId);
         String refreshToken = jwtUtils.generateRefreshToken(userId);
@@ -123,9 +149,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void resetPassword(String email) {
-        AppUser user = userRepository.findByEmail(email)
+        UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(email, AuthenticationType.LOCAL)
                 .orElseThrow(() -> new EmailNotFoundException("Email not found"));
-        if (!user.isEnabled()) {
+        AppUser user = userAuth.getUser();
+        if (!user.getEnabled()) {
+            throw new UserAccountDisabledException("User account is disabled.");
+        }
+        if (!userAuth.getEnabled()) {
             throw new EmailNotVerifiedException("This email has not been verified.\nPlease check your email for the verification link.");
         }
         String firstName = user.getFirstName();
@@ -154,15 +184,23 @@ public class UserServiceImpl implements UserService {
         UUID userId = jwtUtils.getUserIdFromToken(token);
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
-        if (!user.isEnabled()) {
+
+        if (!user.getEnabled()) {
+            throw new UserAccountDisabledException("User account is disabled.");
+        }
+
+        UserAuthentication userAuth = userAuthenticationRepository.findByUserIdAndType(userId, AuthenticationType.LOCAL)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (!userAuth.getEnabled()) {
             throw new EmailNotVerifiedException("This email has not been verified.\nPlease check your email for the verification link.");
         }
         String hashedPassword = BCrypt.hashpw(newPassword, BCrypt.gensalt());
-        user.setPassword(hashedPassword);
-        userRepository.save(user);
+        userAuth.setPassword(hashedPassword);
+        userAuthenticationRepository.save(userAuth);
         String firstName = user.getFirstName();
         String lastName = user.getLastName();
-        String email = user.getEmail();
+        String email = userAuth.getEmail();
         Event passwordResetConfirmEvent = new Event(
                 new UserDetails(firstName, lastName, email),
                 new Email("Password reset confirmation on " + appName,
@@ -181,15 +219,19 @@ public class UserServiceImpl implements UserService {
     public void changePassword(UUID userId, String currentPassword, String newPassword) {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new TokenNotValidException("Invalid or expired token"));
-        if (!BCrypt.checkpw(currentPassword, user.getPassword())) {
+
+        UserAuthentication userAuth = userAuthenticationRepository.findByUserIdAndType(userId, AuthenticationType.LOCAL)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (!BCrypt.checkpw(currentPassword, userAuth.getPassword())) {
             throw new InvalidCredentialsException("Current password is incorrect");
         }
         String hashedNewPassword = BCrypt.hashpw(newPassword, BCrypt.gensalt());
-        user.setPassword(hashedNewPassword);
+        userAuth.setPassword(hashedNewPassword);
         userRepository.save(user);
         String firstName = user.getFirstName();
         String lastName = user.getLastName();
-        String email = user.getEmail();
+        String email = userAuth.getEmail();
         Event passwordChangeEvent = new Event(
                 new UserDetails(firstName, lastName, email),
                 new Email("Password changed on " + appName,
@@ -215,7 +257,7 @@ public class UserServiceImpl implements UserService {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new TokenNotValidException("Invalid or expired refresh token"));
 
-        if (!user.isEnabled()) {
+        if (!user.getEnabled()) {
             throw new TokenNotValidException("Invalid or expired refresh token");
         }
 
