@@ -14,6 +14,9 @@ import java.util.UUID;
 @Setter
 @Entity
 @NoArgsConstructor
+@Table(uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"type", "email"})
+})
 public class UserAuthentication {
     @Id
     private UUID id;

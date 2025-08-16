@@ -10,3 +10,7 @@ CREATE TABLE user_authentication
     last_updated_at TIMESTAMP WITH TIME ZONE NOT NULL,
     FOREIGN KEY (user_id) REFERENCES app_user (id)
 );
+
+ALTER TABLE user_authentication
+    ADD CONSTRAINT uk_user_auth_type_email
+        UNIQUE (type, email);
