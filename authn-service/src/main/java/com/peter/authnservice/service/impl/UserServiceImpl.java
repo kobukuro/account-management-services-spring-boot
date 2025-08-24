@@ -11,11 +11,18 @@ import com.peter.authnservice.repository.UserRepository;
 import com.peter.authnservice.service.UserService;
 import com.peter.authnservice.util.JwtUtils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.*;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.UUID;
 
@@ -37,14 +44,22 @@ public class UserServiceImpl implements UserService {
     private String frontendUrl;
     private final KafkaTemplate<String, Event> kafkaTemplate;
 
+    private final RestTemplate restTemplate;
+    @Value("${google.oauth2.client-id}")
+    private String googleClientId;
+    @Value("${google.oauth2.client-secret}")
+    private String googleClientSecret;
+
     public UserServiceImpl(UserRepository userRepository,
                            UserAuthenticationRepository userAuthenticationRepository,
                            JwtUtils jwtUtils,
-                           KafkaTemplate<String, Event> kafkaTemplate) {
+                           KafkaTemplate<String, Event> kafkaTemplate,
+                           RestTemplate restTemplate) {
         this.userRepository = userRepository;
         this.userAuthenticationRepository = userAuthenticationRepository;
         this.jwtUtils = jwtUtils;
         this.kafkaTemplate = kafkaTemplate;
+        this.restTemplate = restTemplate;
     }
 
     @Override
@@ -262,5 +277,39 @@ public class UserServiceImpl implements UserService {
         }
 
         return jwtUtils.generateAccessToken(userId);
+    }
+
+    @Override
+    public String googleOAuthLogin(String authorizationCode, String redirectUri) {
+        String decodedAuthCode = URLDecoder.decode(authorizationCode, StandardCharsets.UTF_8);
+        String accessToken = exchangeCodeForAccessToken(decodedAuthCode, redirectUri);
+        return "";
+    }
+
+    private String exchangeCodeForAccessToken(String authorizationCode, String redirectUri) {
+        String tokenUrl = "https://oauth2.googleapis.com/token";
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+        params.add("client_id", googleClientId);
+        params.add("client_secret", googleClientSecret);
+        params.add("code", authorizationCode);
+        params.add("grant_type", "authorization_code");
+        params.add("redirect_uri", redirectUri);
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
+
+        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                tokenUrl,
+                HttpMethod.POST,
+                request,
+                new ParameterizedTypeReference<>() {}
+        );
+
+        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+            return (String) response.getBody().get("access_token");
+        }
+        throw new RuntimeException("Failed to exchange authorization code for access token");
     }
 }

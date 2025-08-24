@@ -30,6 +30,7 @@ public class SecurityConfig {
             "/api/v1/users/reset-password",
             "/api/v1/users/reset-password-confirm",
             "/api/v1/users/refresh-token",
+            "/api/v1/users/google-oauth-login"
     };
 
     public SecurityConfig(CorsProperties corsProperties, JwtFilter jwtFilter) {

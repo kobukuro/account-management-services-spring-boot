@@ -43,3 +43,7 @@ springdoc:
     enabled: true
     path: /authn/swagger-ui.html
 allowed-origins: ${ALLOWED_ORIGINS}
+google:
+  oauth2:
+    client-id: ${GOOGLE_OAUTH2_CLIENT_ID}
+    client-secret: ${GOOGLE_OAUTH2_CLIENT_SECRET}

@@ -262,4 +262,11 @@ public class UserController {
         TokenRefreshResponse response = new TokenRefreshResponse(newAccessToken);
         return ResponseEntity.ok(response);
     }
+
+    @PostMapping("/google-oauth-login")
+    public ResponseEntity<GoogleOAuthLoginResponse> googleOAuthLogin(@Valid @RequestBody GoogleOAuthLoginRequest request) {
+        String accessToken = userService.googleOAuthLogin(request.authorizationCode(), request.redirectUri());
+        GoogleOAuthLoginResponse response = new GoogleOAuthLoginResponse(accessToken);
+        return ResponseEntity.ok(response);
+    }
 }
