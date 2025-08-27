@@ -10,4 +10,5 @@ import java.util.UUID;
 public interface UserAuthenticationRepository extends CrudRepository<UserAuthentication, UUID> {
     Optional<UserAuthentication> findByUserIdAndType(UUID userId, AuthenticationType type);
     Optional<UserAuthentication> findByEmailAndType(String email, AuthenticationType type);
+    Optional<UserAuthentication> findByProviderIdAndType(String providerId, AuthenticationType type);
 }

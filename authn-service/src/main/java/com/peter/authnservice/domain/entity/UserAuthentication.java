@@ -29,6 +29,8 @@ public class UserAuthentication {
     @Column(nullable = false)
     private AuthenticationType type;
 
+    private String providerId; // For OAuth providers, store the provider-specific user ID
+
     @Column(nullable = false)
     private String email;
 
@@ -45,7 +47,7 @@ public class UserAuthentication {
     @Column(nullable = false)
     private ZonedDateTime lastUpdatedAt;
 
-    public UserAuthentication(AppUser user, AuthenticationType type, String email, String password) {
+    public UserAuthentication(AppUser user, AuthenticationType type, String providerId, String email, String password) {
         this.id = UUID.randomUUID(); // Generate a new UUID for the authentication
         this.user = user;
         this.type = type;
@@ -57,13 +59,21 @@ public class UserAuthentication {
             this.password = password;
             this.enabled = false;
         } else {
+            this.providerId = providerId;
             this.password = null; // No password for non-local authentication types
             this.enabled = true;
         }
     }
 
     public static UserAuthentication createLocalAuth(AppUser user, String email, String password) {
-        return new UserAuthentication(user, AuthenticationType.LOCAL, email, password);
+        return new UserAuthentication(user, AuthenticationType.LOCAL, null, email, password);
+    }
+
+    public static UserAuthentication createOAuthAuth(AppUser user, AuthenticationType type, String providerId, String email) {
+        if (type == AuthenticationType.LOCAL) {
+            throw new IllegalArgumentException("Use createLocalAuth for local authentication.");
+        }
+        return new UserAuthentication(user, type, providerId, email, null);
     }
 
 }

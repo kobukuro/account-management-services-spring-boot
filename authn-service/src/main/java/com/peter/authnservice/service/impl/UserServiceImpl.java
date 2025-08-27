@@ -25,9 +25,11 @@ import org.springframework.web.client.RestTemplate;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import static com.peter.authnservice.domain.entity.UserAuthentication.createLocalAuth;
+import static com.peter.authnservice.domain.entity.UserAuthentication.createOAuthAuth;
 
 @Service
 @Transactional // Utilize Spring's transaction management to roll back the transaction if an exception occurs
@@ -281,11 +283,34 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public String googleOAuthLogin(String authorizationCode, String redirectUri) {
+    public TokenPair googleOAuthLogin(String authorizationCode, String redirectUri) {
         String decodedAuthCode = URLDecoder.decode(authorizationCode, StandardCharsets.UTF_8);
-        String accessToken = exchangeCodeForAccessToken(decodedAuthCode, redirectUri);
-        GoogleUserInfo googleUserInfo = getUserInfoFromGoogle(accessToken);
-        return "";
+        String googleAccessToken = exchangeCodeForAccessToken(decodedAuthCode, redirectUri);
+        GoogleUserInfo googleUserInfo = getUserInfoFromGoogle(googleAccessToken);
+        Optional<UserAuthentication> existingGoogleAuth = userAuthenticationRepository
+                .findByProviderIdAndType(googleUserInfo.getId(), AuthenticationType.GOOGLE);
+        UserAuthentication googleAuth;
+        if (existingGoogleAuth.isPresent()) {
+            googleAuth = existingGoogleAuth.get();
+            String latestEmail = googleUserInfo.getEmail();
+            // Update email if it has changed
+            if (!googleAuth.getEmail().equals(latestEmail)) {
+                googleAuth.setEmail(latestEmail);
+                userAuthenticationRepository.save(googleAuth);
+            }
+        } else {
+            UUID userId = UUID.randomUUID();
+            String firstName = googleUserInfo.getGivenName();
+            String lastName = googleUserInfo.getFamilyName();
+            AppUser newUser = new AppUser(userId, firstName, lastName, true);
+            userRepository.save(newUser);
+            googleAuth = createOAuthAuth(newUser, AuthenticationType.GOOGLE, googleUserInfo.getId(), googleUserInfo.getEmail());
+            userAuthenticationRepository.save(googleAuth);
+        }
+        UUID userId = googleAuth.getUser().getId();
+        String accessToken = jwtUtils.generateAccessToken(userId);
+        String refreshToken = jwtUtils.generateRefreshToken(userId);
+        return new TokenPair(accessToken, refreshToken);
     }
 
     private String exchangeCodeForAccessToken(String authorizationCode, String redirectUri) {

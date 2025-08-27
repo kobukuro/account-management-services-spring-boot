@@ -264,9 +264,9 @@ public class UserController {
     }
 
     @PostMapping("/google-oauth-login")
-    public ResponseEntity<GoogleOAuthLoginResponse> googleOAuthLogin(@Valid @RequestBody GoogleOAuthLoginRequest request) {
-        String accessToken = userService.googleOAuthLogin(request.authorizationCode(), request.redirectUri());
-        GoogleOAuthLoginResponse response = new GoogleOAuthLoginResponse(accessToken);
+    public ResponseEntity<UserLoginResponse> googleOAuthLogin(@Valid @RequestBody GoogleOAuthLoginRequest request) {
+        TokenPair tokenPair = userService.googleOAuthLogin(request.authorizationCode(), request.redirectUri());
+        UserLoginResponse response = new UserLoginResponse(tokenPair.accessToken(), tokenPair.refreshToken());
         return ResponseEntity.ok(response);
     }
 }

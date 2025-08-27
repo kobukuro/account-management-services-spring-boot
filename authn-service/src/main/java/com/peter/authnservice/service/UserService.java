@@ -22,5 +22,5 @@ public interface UserService {
 
     String refreshToken(String refreshToken);
 
-    String googleOAuthLogin(String authorizationCode, String redirectUri);
+    TokenPair googleOAuthLogin(String authorizationCode, String redirectUri);
 }
