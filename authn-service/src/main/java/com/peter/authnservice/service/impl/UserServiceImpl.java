@@ -1,6 +1,7 @@
 package com.peter.authnservice.service.impl;
 
 import com.peter.authnservice.domain.dto.TokenPair;
+import com.peter.authnservice.domain.dto.oauth.GoogleUserInfo;
 import com.peter.authnservice.domain.entity.AppUser;
 import com.peter.authnservice.domain.entity.AuthenticationType;
 import com.peter.authnservice.domain.entity.UserAuthentication;
@@ -283,6 +284,7 @@ public class UserServiceImpl implements UserService {
     public String googleOAuthLogin(String authorizationCode, String redirectUri) {
         String decodedAuthCode = URLDecoder.decode(authorizationCode, StandardCharsets.UTF_8);
         String accessToken = exchangeCodeForAccessToken(decodedAuthCode, redirectUri);
+        GoogleUserInfo googleUserInfo = getUserInfoFromGoogle(accessToken);
         return "";
     }
 
@@ -304,12 +306,48 @@ public class UserServiceImpl implements UserService {
                 tokenUrl,
                 HttpMethod.POST,
                 request,
-                new ParameterizedTypeReference<>() {}
+                new ParameterizedTypeReference<>() {
+                }
         );
 
         if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
             return (String) response.getBody().get("access_token");
         }
         throw new RuntimeException("Failed to exchange authorization code for access token");
+    }
+
+    private GoogleUserInfo getUserInfoFromGoogle(String accessToken) {
+        String userInfoUrl = "https://www.googleapis.com/oauth2/v2/userinfo";
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(accessToken);
+
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+
+        try {
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    userInfoUrl,
+                    HttpMethod.GET,
+                    entity,
+                    new ParameterizedTypeReference<>() {
+                    }
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                Map<String, Object> userInfo = response.getBody();
+                return new GoogleUserInfo(
+                        (String) userInfo.get("id"),
+                        (String) userInfo.get("email"),
+                        (Boolean) userInfo.get("verified_email"),
+                        (String) userInfo.get("name"),
+                        (String) userInfo.get("given_name"),
+                        (String) userInfo.get("family_name"),
+                        (String) userInfo.get("picture")
+                );
+            }
+            throw new RuntimeException("Failed to get user info from Google");
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get user info from Google: " + e.getMessage());
+        }
     }
 }
