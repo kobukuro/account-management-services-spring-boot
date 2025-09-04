@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URLDecoder;
@@ -282,35 +283,42 @@ public class UserServiceImpl implements UserService {
         return jwtUtils.generateAccessToken(userId);
     }
 
+
     @Override
     public TokenPair googleOAuthLogin(String authorizationCode, String redirectUri) {
-        String decodedAuthCode = URLDecoder.decode(authorizationCode, StandardCharsets.UTF_8);
-        String googleAccessToken = exchangeCodeForAccessToken(decodedAuthCode, redirectUri);
-        GoogleUserInfo googleUserInfo = getUserInfoFromGoogle(googleAccessToken);
-        Optional<UserAuthentication> existingGoogleAuth = userAuthenticationRepository
-                .findByProviderIdAndType(googleUserInfo.getId(), AuthenticationType.GOOGLE);
-        UserAuthentication googleAuth;
-        if (existingGoogleAuth.isPresent()) {
-            googleAuth = existingGoogleAuth.get();
-            String latestEmail = googleUserInfo.getEmail();
-            // Update email if it has changed
-            if (!googleAuth.getEmail().equals(latestEmail)) {
-                googleAuth.setEmail(latestEmail);
+        try {
+            String decodedAuthCode = URLDecoder.decode(authorizationCode, StandardCharsets.UTF_8);
+            String googleAccessToken = exchangeCodeForAccessToken(decodedAuthCode, redirectUri);
+            GoogleUserInfo googleUserInfo = getUserInfoFromGoogle(googleAccessToken);
+            Optional<UserAuthentication> existingGoogleAuth = userAuthenticationRepository
+                    .findByProviderIdAndType(googleUserInfo.getId(), AuthenticationType.GOOGLE);
+            UserAuthentication googleAuth;
+            if (existingGoogleAuth.isPresent()) {
+                googleAuth = existingGoogleAuth.get();
+                String latestEmail = googleUserInfo.getEmail();
+                // Update email if it has changed
+                if (!googleAuth.getEmail().equals(latestEmail)) {
+                    googleAuth.setEmail(latestEmail);
+                    userAuthenticationRepository.save(googleAuth);
+                }
+            } else {
+                UUID userId = UUID.randomUUID();
+                String firstName = googleUserInfo.getGivenName();
+                String lastName = googleUserInfo.getFamilyName();
+                AppUser newUser = new AppUser(userId, firstName, lastName, true);
+                userRepository.save(newUser);
+                googleAuth = createOAuthAuth(newUser, AuthenticationType.GOOGLE, googleUserInfo.getId(), googleUserInfo.getEmail());
                 userAuthenticationRepository.save(googleAuth);
             }
-        } else {
-            UUID userId = UUID.randomUUID();
-            String firstName = googleUserInfo.getGivenName();
-            String lastName = googleUserInfo.getFamilyName();
-            AppUser newUser = new AppUser(userId, firstName, lastName, true);
-            userRepository.save(newUser);
-            googleAuth = createOAuthAuth(newUser, AuthenticationType.GOOGLE, googleUserInfo.getId(), googleUserInfo.getEmail());
-            userAuthenticationRepository.save(googleAuth);
+            UUID userId = googleAuth.getUser().getId();
+            String accessToken = jwtUtils.generateAccessToken(userId);
+            String refreshToken = jwtUtils.generateRefreshToken(userId);
+            return new TokenPair(accessToken, refreshToken);
+        } catch (InvalidAuthorizationCodeException e) {
+            throw e; // Rethrow the custom exception
+        } catch (Exception e) {
+            throw new RuntimeException("Google OAuth login failed: " + e.getMessage());
         }
-        UUID userId = googleAuth.getUser().getId();
-        String accessToken = jwtUtils.generateAccessToken(userId);
-        String refreshToken = jwtUtils.generateRefreshToken(userId);
-        return new TokenPair(accessToken, refreshToken);
     }
 
     private String exchangeCodeForAccessToken(String authorizationCode, String redirectUri) {
@@ -327,16 +335,25 @@ public class UserServiceImpl implements UserService {
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
 
-        ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                tokenUrl,
-                HttpMethod.POST,
-                request,
-                new ParameterizedTypeReference<>() {
-                }
-        );
+        try {
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    tokenUrl,
+                    HttpMethod.POST,
+                    request,
+                    new ParameterizedTypeReference<>() {
+                    }
+            );
 
-        if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-            return (String) response.getBody().get("access_token");
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return (String) response.getBody().get("access_token");
+            }
+
+        } catch (HttpClientErrorException e) {
+            if (e.getStatusCode() == HttpStatus.BAD_REQUEST) {
+                if (e.getResponseBodyAsString().contains("Malformed auth code")) {
+                    throw new InvalidAuthorizationCodeException("The authorization code is malformed.");
+                }
+            }
         }
         throw new RuntimeException("Failed to exchange authorization code for access token");
     }

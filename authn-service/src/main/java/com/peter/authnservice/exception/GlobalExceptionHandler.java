@@ -32,6 +32,14 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler(InvalidAuthorizationCodeException.class)
+    public ResponseEntity<ErrorResponse> handleCustomizedValidationExceptions(Exception ex) {
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage()
+        );
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler({TokenNotValidException.class, InvalidCredentialsException.class})
     public ResponseEntity<ErrorResponse> handleUnauthorized(Exception ex) {
         ErrorResponse error = new ErrorResponse(
