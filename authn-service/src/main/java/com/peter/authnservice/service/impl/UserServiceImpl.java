@@ -1,5 +1,8 @@
 package com.peter.authnservice.service.impl;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.peter.authnservice.domain.dto.TokenPair;
 import com.peter.authnservice.domain.dto.oauth.GoogleUserInfo;
 import com.peter.authnservice.domain.entity.AppUser;
@@ -321,7 +324,7 @@ public class UserServiceImpl implements UserService {
         }
     }
 
-    private String exchangeCodeForAccessToken(String authorizationCode, String redirectUri) {
+    private String exchangeCodeForAccessToken(String authorizationCode, String redirectUri) throws JsonProcessingException {
         String tokenUrl = "https://oauth2.googleapis.com/token";
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
@@ -350,8 +353,15 @@ public class UserServiceImpl implements UserService {
 
         } catch (HttpClientErrorException e) {
             if (e.getStatusCode() == HttpStatus.BAD_REQUEST) {
-                if (e.getResponseBodyAsString().contains("Malformed auth code")) {
-                    throw new InvalidAuthorizationCodeException("The authorization code is malformed.");
+                String responseBody = e.getResponseBodyAsString();
+                ObjectMapper mapper = new ObjectMapper();
+                JsonNode jsonNode = mapper.readTree(responseBody);
+
+                if (jsonNode.has("error")) {
+                    String errorValue = jsonNode.get("error").asText();
+                    if (errorValue.equals("invalid_grant")) {
+                        throw new InvalidAuthorizationCodeException("The authorization code is malformed, invalid or has already been used.");
+                    }
                 }
             }
         }
