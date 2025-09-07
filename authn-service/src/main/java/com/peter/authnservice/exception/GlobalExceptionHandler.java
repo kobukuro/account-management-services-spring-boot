@@ -32,7 +32,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(InvalidAuthorizationCodeException.class)
+    @ExceptionHandler({InvalidAuthorizationCodeException.class, MismatchRedirectUriException.class})
     public ResponseEntity<ErrorResponse> handleCustomizedValidationExceptions(Exception ex) {
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage()

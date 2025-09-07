@@ -317,7 +317,7 @@ public class UserServiceImpl implements UserService {
             String accessToken = jwtUtils.generateAccessToken(userId);
             String refreshToken = jwtUtils.generateRefreshToken(userId);
             return new TokenPair(accessToken, refreshToken);
-        } catch (InvalidAuthorizationCodeException e) {
+        } catch (InvalidAuthorizationCodeException | MismatchRedirectUriException e) {
             throw e; // Rethrow the custom exception
         } catch (Exception e) {
             throw new RuntimeException("Google OAuth login failed: " + e.getMessage());
@@ -361,6 +361,9 @@ public class UserServiceImpl implements UserService {
                     String errorValue = jsonNode.get("error").asText();
                     if (errorValue.equals("invalid_grant")) {
                         throw new InvalidAuthorizationCodeException("The authorization code is malformed, invalid or has already been used.");
+                    }
+                    if (errorValue.equals("redirect_uri_mismatch")) {
+                        throw new MismatchRedirectUriException("The redirect URI provided does not match the ones registered.");
                     }
                 }
             }
