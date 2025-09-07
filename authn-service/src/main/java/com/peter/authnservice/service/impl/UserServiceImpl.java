@@ -320,7 +320,7 @@ public class UserServiceImpl implements UserService {
         } catch (InvalidAuthorizationCodeException | MismatchRedirectUriException e) {
             throw e; // Rethrow the custom exception
         } catch (Exception e) {
-            throw new RuntimeException("Google OAuth login failed: " + e.getMessage());
+            throw new OAuthException("Google OAuth login failed due to unexpected error");
         }
     }
 
