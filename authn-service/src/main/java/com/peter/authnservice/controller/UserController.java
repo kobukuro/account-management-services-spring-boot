@@ -263,6 +263,25 @@ public class UserController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(
+            summary = "Google OAuth Login",
+            description = "Login or register a user using Google OAuth 2.0. Returns access and refresh tokens."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "User logged in successfully using Google OAuth",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = UserLoginResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid request parameters",
+                    content = @Content
+            )
+    })
     @PostMapping("/google-oauth-login")
     public ResponseEntity<UserLoginResponse> googleOAuthLogin(@Valid @RequestBody GoogleOAuthLoginRequest request) {
         TokenPair tokenPair = userService.googleOAuthLogin(request.authorizationCode(), request.redirectUri());
