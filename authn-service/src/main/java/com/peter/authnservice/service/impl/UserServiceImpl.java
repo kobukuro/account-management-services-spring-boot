@@ -250,7 +250,7 @@ public class UserServiceImpl implements UserService {
         }
         String hashedNewPassword = BCrypt.hashpw(newPassword, BCrypt.gensalt());
         userAuth.setPassword(hashedNewPassword);
-        userRepository.save(user);
+        userAuthenticationRepository.save(userAuth);
         String firstName = user.getFirstName();
         String lastName = user.getLastName();
         String email = userAuth.getEmail();
