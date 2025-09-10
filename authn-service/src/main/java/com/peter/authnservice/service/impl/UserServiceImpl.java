@@ -368,7 +368,7 @@ public class UserServiceImpl implements UserService {
                 }
             }
         }
-        throw new RuntimeException("Failed to exchange authorization code for access token");
+        throw new OAuthException("Failed to exchange authorization code for access token. The response from Google was not successful or did not contain an access token.");
     }
 
     private GoogleUserInfo getUserInfoFromGoogle(String accessToken) {
@@ -400,9 +400,9 @@ public class UserServiceImpl implements UserService {
                         (String) userInfo.get("picture")
                 );
             }
-            throw new RuntimeException("Failed to get user info from Google");
+            throw new OAuthException("OAuth user info retrieval failed: Google API did not return a successful response.");
         } catch (Exception e) {
-            throw new RuntimeException("Failed to get user info from Google: " + e.getMessage());
+            throw new OAuthException("OAuth user info retrieval failed: " + e.getMessage());
         }
     }
 }
