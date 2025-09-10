@@ -67,7 +67,7 @@ public class GoogleOAuthLoginIntegrationTest {
     private Flyway flyway;
 
     private final String authorizationCode = "test_auth_code";
-    private final String redirectUri = "http://localhost:3000/auth/callback";
+    private final String redirectUri = "https://example.com/auth/callback";
     private final String googleUserId = "google_user_123";
     private final String email = "test@gmail.com";
     private final String firstName = "John";
