@@ -21,4 +21,6 @@ public interface UserService {
     void changePassword(UUID userId, String currentPassword, String newPassword);
 
     String refreshToken(String refreshToken);
+
+    TokenPair googleOAuthLogin(String authorizationCode, String redirectUri);
 }

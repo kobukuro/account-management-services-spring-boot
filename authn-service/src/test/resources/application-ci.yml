@@ -38,3 +38,7 @@ jwt:
 frontend-url: "test-frontend-url-for-ci-environment"
 app-name: "test-app-name-for-ci-environment"
 allowed-origins: ""
+google:
+  oauth2:
+    client-id: ${GOOGLE_OAUTH2_CLIENT_ID}
+    client-secret: ${GOOGLE_OAUTH2_CLIENT_SECRET}

@@ -3,7 +3,10 @@ package com.peter.authnservice;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.peter.authnservice.domain.dto.PasswordChangeRequest;
 import com.peter.authnservice.domain.entity.AppUser;
+import com.peter.authnservice.domain.entity.AuthenticationType;
+import com.peter.authnservice.domain.entity.UserAuthentication;
 import com.peter.authnservice.domain.event.Event;
+import com.peter.authnservice.repository.UserAuthenticationRepository;
 import com.peter.authnservice.repository.UserRepository;
 import com.peter.authnservice.util.JwtUtils;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -32,6 +35,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import static com.peter.authnservice.domain.entity.UserAuthentication.createLocalAuth;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.junit.jupiter.api.Assertions.*;
@@ -52,6 +56,9 @@ public class PasswordChangeIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private UserAuthenticationRepository userAuthenticationRepository;
 
     @Autowired
     private JwtUtils jwtUtils;
@@ -116,8 +123,13 @@ public class PasswordChangeIntegrationTest {
      */
     private AppUser createActivatedUser() {
         String hashedPassword = BCrypt.hashpw(currentPassword, BCrypt.gensalt());
-        AppUser user = new AppUser(firstName, lastName, testEmail, hashedPassword, true);
-        return userRepository.save(user);
+
+        AppUser user = new AppUser(firstName, lastName, true);
+        UserAuthentication userAuth = createLocalAuth(user, testEmail, hashedPassword);
+        AppUser appUser = userRepository.save(user);
+        userAuthenticationRepository.save(userAuth);
+
+        return appUser;
     }
 
     /**
@@ -144,9 +156,9 @@ public class PasswordChangeIntegrationTest {
                 .andExpect(status().isNoContent());
 
         // Verify password was changed in database
-        AppUser updatedUser = userRepository.findById(user.getId()).orElseThrow();
-        assertTrue(BCrypt.checkpw(newPassword, updatedUser.getPassword()));
-        assertFalse(BCrypt.checkpw(currentPassword, updatedUser.getPassword()));
+        UserAuthentication userAuth = userAuthenticationRepository.findByUserIdAndType(user.getId(), AuthenticationType.LOCAL).orElseThrow();
+        assertTrue(BCrypt.checkpw(newPassword, userAuth.getPassword()));
+        assertFalse(BCrypt.checkpw(currentPassword, userAuth.getPassword()));
 
         // Verify Kafka message was sent
         ConsumerRecords<String, Event> records = consumer.poll(Duration.ofSeconds(5));
@@ -181,9 +193,9 @@ public class PasswordChangeIntegrationTest {
                 .andExpect(status().isUnauthorized());
 
         // Verify password was not changed
-        AppUser unchangedUser = userRepository.findById(user.getId()).orElseThrow();
-        assertTrue(BCrypt.checkpw(currentPassword, unchangedUser.getPassword()));
-        assertFalse(BCrypt.checkpw(newPassword, unchangedUser.getPassword()));
+        UserAuthentication userAuth = userAuthenticationRepository.findByUserIdAndType(user.getId(), AuthenticationType.LOCAL).orElseThrow();
+        assertTrue(BCrypt.checkpw(currentPassword, userAuth.getPassword()));
+        assertFalse(BCrypt.checkpw(newPassword, userAuth.getPassword()));
     }
 
     /**
@@ -251,8 +263,8 @@ public class PasswordChangeIntegrationTest {
                 .andExpect(status().isBadRequest());
 
         // Verify password was not changed
-        AppUser unchangedUser = userRepository.findById(user.getId()).orElseThrow();
-        assertTrue(BCrypt.checkpw(currentPassword, unchangedUser.getPassword()));
+        UserAuthentication unchangedUserAuth = userAuthenticationRepository.findByUserIdAndType(user.getId(), AuthenticationType.LOCAL).orElseThrow();
+        assertTrue(BCrypt.checkpw(currentPassword, unchangedUserAuth.getPassword()));
     }
 
     /**

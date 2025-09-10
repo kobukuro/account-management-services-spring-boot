@@ -32,6 +32,14 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errors, HttpStatus.BAD_REQUEST);
     }
 
+    @ExceptionHandler({InvalidAuthorizationCodeException.class, MismatchRedirectUriException.class})
+    public ResponseEntity<ErrorResponse> handleCustomizedValidationExceptions(Exception ex) {
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage()
+        );
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler({TokenNotValidException.class, InvalidCredentialsException.class})
     public ResponseEntity<ErrorResponse> handleUnauthorized(Exception ex) {
         ErrorResponse error = new ErrorResponse(
@@ -40,7 +48,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
     }
 
-    @ExceptionHandler({EmailNotVerifiedException.class})
+    @ExceptionHandler({EmailNotVerifiedException.class, UserAccountDisabledException.class})
     public ResponseEntity<ErrorResponse> handleForbidden(Exception ex) {
         ErrorResponse error = new ErrorResponse(
                 ex.getMessage()
@@ -62,5 +70,13 @@ public class GlobalExceptionHandler {
                 ex.getMessage()
         );
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
+    }
+
+    @ExceptionHandler(OAuthException.class)
+    public ResponseEntity<ErrorResponse> handleInternalServerError(Exception ex) {
+        ErrorResponse error = new ErrorResponse(
+                ex.getMessage()
+        );
+        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

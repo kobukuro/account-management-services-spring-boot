@@ -6,7 +6,10 @@ import com.peter.authnservice.domain.dto.PasswordResetRequest;
 import com.peter.authnservice.domain.dto.UserRegistrationRequest;
 import com.peter.authnservice.domain.dto.UserRegistrationResponse;
 import com.peter.authnservice.domain.entity.AppUser;
+import com.peter.authnservice.domain.entity.AuthenticationType;
+import com.peter.authnservice.domain.entity.UserAuthentication;
 import com.peter.authnservice.domain.event.Event;
+import com.peter.authnservice.repository.UserAuthenticationRepository;
 import com.peter.authnservice.repository.UserRepository;
 import com.peter.authnservice.util.JwtUtils;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -35,6 +38,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
+import static com.peter.authnservice.domain.entity.UserAuthentication.createLocalAuth;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.junit.jupiter.api.Assertions.*;
@@ -59,6 +63,9 @@ public class UserResetPasswordIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private UserAuthenticationRepository userAuthenticationRepository;
 
     @Autowired
     private Flyway flyway;
@@ -129,9 +136,9 @@ public class UserResetPasswordIntegrationTest {
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isCreated());
 
-        AppUser user = userRepository.findByEmail(testEmail).orElseThrow();
-        user.setEnabled(true);
-        userRepository.save(user);
+        UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).orElseThrow();
+        userAuth.setEnabled(true);
+        userAuthenticationRepository.save(userAuth);
 
         PasswordResetRequest resetRequest = new PasswordResetRequest(testEmail);
 
@@ -213,9 +220,10 @@ public class UserResetPasswordIntegrationTest {
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isCreated());
 
-        AppUser user = userRepository.findByEmail(testEmail).orElseThrow();
-        user.setEnabled(true);
-        userRepository.save(user);
+        UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).orElseThrow();
+        AppUser user = userAuth.getUser();
+        userAuth.setEnabled(true);
+        userAuthenticationRepository.save(userAuth);
 
         String resetToken = jwtUtils.generateResetPasswordToken(user.getId());
         String newPassword = "NewPassword123!";
@@ -229,8 +237,8 @@ public class UserResetPasswordIntegrationTest {
                 .andExpect(status().isNoContent());
 
         // Verify password is updated
-        AppUser updatedUser = userRepository.findByEmail(testEmail).orElseThrow();
-        assertTrue(BCrypt.checkpw(newPassword, updatedUser.getPassword()));
+        UserAuthentication updatedUserAuth = userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).orElseThrow();
+        assertTrue(BCrypt.checkpw(newPassword, updatedUserAuth.getPassword()));
 
         // Verify Kafka event
         ConsumerRecords<String, Event> records = consumer.poll(Duration.ofSeconds(5));
@@ -288,8 +296,10 @@ public class UserResetPasswordIntegrationTest {
      */
     @Test
     void whenEmptyPasswordInConfirmation_thenReturns400() throws Exception {
-        UUID userId = userRepository.save(new AppUser(
-                firstName, lastName, testEmail, BCrypt.hashpw(password, BCrypt.gensalt()), true)).getId();
+        AppUser newUser = new AppUser(firstName, lastName, true);
+        UUID userId = userRepository.save(newUser).getId();
+        UserAuthentication userAuth = createLocalAuth(newUser, testEmail, BCrypt.hashpw(password, BCrypt.gensalt()));
+        userAuthenticationRepository.save(userAuth);
         String resetToken = jwtUtils.generateResetPasswordToken(userId);
         PasswordResetConfirmRequest confirmRequest = new PasswordResetConfirmRequest(
                 resetToken, "");
@@ -311,9 +321,10 @@ public class UserResetPasswordIntegrationTest {
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isCreated());
 
-        AppUser user = userRepository.findByEmail(testEmail).orElseThrow();
-        user.setEnabled(true);
-        userRepository.save(user);
+        UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).orElseThrow();
+        AppUser user = userAuth.getUser();
+        userAuth.setEnabled(true);
+        userAuthenticationRepository.save(userAuth);
 
         String resetToken = jwtUtils.generateResetPasswordToken(user.getId());
 
@@ -337,9 +348,10 @@ public class UserResetPasswordIntegrationTest {
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isCreated());
 
-        AppUser user = userRepository.findByEmail(testEmail).orElseThrow();
-        user.setEnabled(true);
-        userRepository.save(user);
+        UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).orElseThrow();
+        AppUser user = userAuth.getUser();
+        userAuth.setEnabled(true);
+        userAuthenticationRepository.save(userAuth);
 
         String resetToken = jwtUtils.generateResetPasswordToken(user.getId());
 
@@ -363,9 +375,10 @@ public class UserResetPasswordIntegrationTest {
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isCreated());
 
-        AppUser user = userRepository.findByEmail(testEmail).orElseThrow();
-        user.setEnabled(true);
-        userRepository.save(user);
+        UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).orElseThrow();
+        AppUser user = userAuth.getUser();
+        userAuth.setEnabled(true);
+        userAuthenticationRepository.save(userAuth);
 
         String resetToken = jwtUtils.generateResetPasswordToken(user.getId());
 
@@ -389,9 +402,10 @@ public class UserResetPasswordIntegrationTest {
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isCreated());
 
-        AppUser user = userRepository.findByEmail(testEmail).orElseThrow();
-        user.setEnabled(true);
-        userRepository.save(user);
+        UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).orElseThrow();
+        AppUser user = userAuth.getUser();
+        userAuth.setEnabled(true);
+        userAuthenticationRepository.save(userAuth);
 
         String resetToken = jwtUtils.generateResetPasswordToken(user.getId());
 
@@ -415,9 +429,10 @@ public class UserResetPasswordIntegrationTest {
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isCreated());
 
-        AppUser user = userRepository.findByEmail(testEmail).orElseThrow();
-        user.setEnabled(true);
-        userRepository.save(user);
+        UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).orElseThrow();
+        AppUser user = userAuth.getUser();
+        userAuth.setEnabled(true);
+        userAuthenticationRepository.save(userAuth);
 
         String resetToken = jwtUtils.generateResetPasswordToken(user.getId());
 
@@ -441,9 +456,10 @@ public class UserResetPasswordIntegrationTest {
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isCreated());
 
-        AppUser user = userRepository.findByEmail(testEmail).orElseThrow();
-        user.setEnabled(true);
-        userRepository.save(user);
+        UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).orElseThrow();
+        AppUser user = userAuth.getUser();
+        userAuth.setEnabled(true);
+        userAuthenticationRepository.save(userAuth);
 
         String resetToken = jwtUtils.generateResetPasswordToken(user.getId());
 

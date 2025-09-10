@@ -5,8 +5,10 @@ import com.peter.authnservice.domain.dto.ActivationEmailResendRequest;
 import com.peter.authnservice.domain.dto.UserActivationRequest;
 import com.peter.authnservice.domain.dto.UserRegistrationRequest;
 import com.peter.authnservice.domain.dto.UserRegistrationResponse;
-import com.peter.authnservice.domain.entity.AppUser;
+import com.peter.authnservice.domain.entity.AuthenticationType;
+import com.peter.authnservice.domain.entity.UserAuthentication;
 import com.peter.authnservice.domain.event.Event;
+import com.peter.authnservice.repository.UserAuthenticationRepository;
 import com.peter.authnservice.repository.UserRepository;
 import com.peter.authnservice.util.JwtUtils;
 import org.apache.kafka.clients.consumer.Consumer;
@@ -56,6 +58,9 @@ public class UserRegistrationIntegrationTest {
 
     @Autowired
     private UserRepository userRepository;
+
+    @Autowired
+    private UserAuthenticationRepository userAuthenticationRepository;
 
     @Autowired
     private JwtUtils jwtUtils;
@@ -129,7 +134,7 @@ public class UserRegistrationIntegrationTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.email").value(validRequest.email()));
 
-        assertTrue(userRepository.findByEmail(validRequest.email()).isPresent());
+        assertTrue(userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).isPresent());
 
         ConsumerRecords<String, Event> records =
                 consumer.poll(Duration.ofSeconds(5));
@@ -328,7 +333,7 @@ public class UserRegistrationIntegrationTest {
                         .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest());
 
-        assertFalse(userRepository.findByEmail(invalidRequest.email()).isPresent());
+        assertFalse(userAuthenticationRepository.findByEmailAndType("invalid-email", AuthenticationType.LOCAL).isPresent());
     }
 
     /**
@@ -414,9 +419,8 @@ public class UserRegistrationIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(activationRequest)))
                 .andExpect(status().isNoContent());
-
-        AppUser user = userRepository.findByEmail(testEmail).orElseThrow();
-        assertTrue(user.getEnabled());
+        UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).orElseThrow();
+        assertTrue(userAuth.getEnabled());
     }
 
     /**
@@ -436,9 +440,8 @@ public class UserRegistrationIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isUnauthorized());
-
-        AppUser user = userRepository.findByEmail(testEmail).orElseThrow();
-        assertFalse(user.getEnabled());
+        UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).orElseThrow();
+        assertFalse(userAuth.getEnabled());
     }
 
     /**

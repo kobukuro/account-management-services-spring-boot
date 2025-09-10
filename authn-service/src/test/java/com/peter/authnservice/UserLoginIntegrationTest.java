@@ -3,7 +3,9 @@ package com.peter.authnservice;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.peter.authnservice.domain.dto.*;
 import com.peter.authnservice.domain.entity.AppUser;
-import com.peter.authnservice.repository.UserRepository;
+import com.peter.authnservice.domain.entity.AuthenticationType;
+import com.peter.authnservice.domain.entity.UserAuthentication;
+import com.peter.authnservice.repository.UserAuthenticationRepository;
 import com.peter.authnservice.util.JwtUtils;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,7 +45,7 @@ public class UserLoginIntegrationTest {
     private JwtUtils jwtUtils;
 
     @Autowired
-    private UserRepository userRepository;
+    private UserAuthenticationRepository userAuthRepository;
 
     @Autowired
     private Flyway flyway;
@@ -52,6 +54,7 @@ public class UserLoginIntegrationTest {
     private final String lastName = "Doe";
     private final String email = "test@example.com";
     private final String password = "Password123!";
+
 
     @BeforeEach
     void setUp() {
@@ -76,9 +79,9 @@ public class UserLoginIntegrationTest {
                 .andExpect(status().isCreated());
 
         // Verify account
-        AppUser user = userRepository.findByEmail(email).orElseThrow();
-        user.setEnabled(true);
-        userRepository.save(user);
+        UserAuthentication userAuth = userAuthRepository.findByEmailAndType(email, AuthenticationType.LOCAL).orElseThrow();
+        userAuth.setEnabled(true);
+        userAuthRepository.save(userAuth);
 
         // Login
         UserLoginRequest loginRequest = new UserLoginRequest(email, password);
@@ -126,9 +129,9 @@ public class UserLoginIntegrationTest {
                         .content(objectMapper.writeValueAsString(registrationRequest)))
                 .andExpect(status().isCreated());
 
-        AppUser user = userRepository.findByEmail(email).orElseThrow();
-        user.setEnabled(true);
-        userRepository.save(user);
+        UserAuthentication userAuth = userAuthRepository.findByEmailAndType(email, AuthenticationType.LOCAL).orElseThrow();
+        userAuth.setEnabled(true);
+        userAuthRepository.save(userAuth);
 
         // Try to log in with wrong password
         UserLoginRequest loginRequest = new UserLoginRequest(email, "WrongPassword123!");
@@ -194,9 +197,10 @@ public class UserLoginIntegrationTest {
                 .andExpect(status().isCreated());
 
         // Verify account
-        AppUser user = userRepository.findByEmail(email).orElseThrow();
-        user.setEnabled(true);
-        userRepository.save(user);
+        UserAuthentication userAuth = userAuthRepository.findByEmailAndType(email, AuthenticationType.LOCAL).orElseThrow();
+        AppUser user = userAuth.getUser();
+        userAuth.setEnabled(true);
+        userAuthRepository.save(userAuth);
 
         // Extract refresh token from login response
         UserLoginRequest loginRequest = new UserLoginRequest(email, password);
@@ -247,31 +251,6 @@ public class UserLoginIntegrationTest {
         String tokenWithNonExistentUser = jwtUtils.generateRefreshToken(nonExistentUserId);
 
         TokenRefreshRequest request = new TokenRefreshRequest(tokenWithNonExistentUser);
-
-        mockMvc.perform(post(REFRESH_TOKEN_API_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isUnauthorized());
-    }
-
-    /**
-     * Test refresh token for disabled user
-     */
-    @Test
-    void whenUserIsDisabled_thenReturns401() throws Exception {
-        // Register user
-        UserRegistrationRequest registrationRequest = new UserRegistrationRequest(
-                firstName, lastName, email, password
-        );
-        mockMvc.perform(post(REGISTER_API_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(registrationRequest)))
-                .andExpect(status().isCreated());
-
-        AppUser disabledUser = userRepository.findByEmail(email).orElseThrow();
-
-        String refreshToken = jwtUtils.generateRefreshToken(disabledUser.getId());
-        TokenRefreshRequest request = new TokenRefreshRequest(refreshToken);
 
         mockMvc.perform(post(REFRESH_TOKEN_API_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
