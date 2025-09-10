@@ -54,8 +54,7 @@ public class UserLoginIntegrationTest {
     private final String lastName = "Doe";
     private final String email = "test@example.com";
     private final String password = "Password123!";
-    @Autowired
-    private UserAuthenticationRepository userAuthenticationRepository;
+
 
     @BeforeEach
     void setUp() {
@@ -80,7 +79,7 @@ public class UserLoginIntegrationTest {
                 .andExpect(status().isCreated());
 
         // Verify account
-        UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(email, AuthenticationType.LOCAL).orElseThrow();
+        UserAuthentication userAuth = userAuthRepository.findByEmailAndType(email, AuthenticationType.LOCAL).orElseThrow();
         userAuth.setEnabled(true);
         userAuthRepository.save(userAuth);
 
@@ -130,9 +129,9 @@ public class UserLoginIntegrationTest {
                         .content(objectMapper.writeValueAsString(registrationRequest)))
                 .andExpect(status().isCreated());
 
-        UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(email, AuthenticationType.LOCAL).orElseThrow();
+        UserAuthentication userAuth = userAuthRepository.findByEmailAndType(email, AuthenticationType.LOCAL).orElseThrow();
         userAuth.setEnabled(true);
-        userAuthenticationRepository.save(userAuth);
+        userAuthRepository.save(userAuth);
 
         // Try to log in with wrong password
         UserLoginRequest loginRequest = new UserLoginRequest(email, "WrongPassword123!");
@@ -198,10 +197,10 @@ public class UserLoginIntegrationTest {
                 .andExpect(status().isCreated());
 
         // Verify account
-        UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(email, AuthenticationType.LOCAL).orElseThrow();
+        UserAuthentication userAuth = userAuthRepository.findByEmailAndType(email, AuthenticationType.LOCAL).orElseThrow();
         AppUser user = userAuth.getUser();
         userAuth.setEnabled(true);
-        userAuthenticationRepository.save(userAuth);
+        userAuthRepository.save(userAuth);
 
         // Extract refresh token from login response
         UserLoginRequest loginRequest = new UserLoginRequest(email, password);
