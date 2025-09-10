@@ -53,9 +53,7 @@ public class UserAuthentication {
         this.type = type;
         this.email = email;
         if (type == AuthenticationType.LOCAL) {
-            if (password == null || password.trim().isEmpty()) {
-                throw new IllegalArgumentException("Password cannot be null or empty for local authentication.");
-            }
+            validatePasswordForLocalAuth(password);
             this.password = password;
             this.enabled = false;
         } else {
@@ -76,4 +74,14 @@ public class UserAuthentication {
         return new UserAuthentication(user, type, providerId, email, null);
     }
 
+    /**
+     * Validates password for local authentication
+     * @param password the password to validate
+     * @throws IllegalArgumentException if password is null or empty
+     */
+    private void validatePasswordForLocalAuth(String password) {
+        if (password == null || password.trim().isEmpty()) {
+            throw new IllegalArgumentException("Password cannot be null or empty for local authentication.");
+        }
+    }
 }
