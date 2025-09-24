@@ -83,6 +83,9 @@ public class UserRegistrationIntegrationTest {
     @Value("${jwt.verification.expiration}")
     private long verificationTokenExpirationInMilliseconds;
 
+    @Value("${test.kafka.max-poll-iterations}")
+    private int maxKafkaPollIterations;
+
     @BeforeAll
     static void setupKafkaConsumer() {
         Map<String, Object> consumerProps = new HashMap<>();
@@ -108,7 +111,13 @@ public class UserRegistrationIntegrationTest {
         flyway.clean();
         flyway.migrate();
 
-        consumer.poll(Duration.ofMillis(100));
+        // Clear Kafka events before each test
+        ConsumerRecords<String, Event> records;
+        int iteration = 0;
+        do {
+            records = consumer.poll(Duration.ofMillis(500));
+            iteration++;
+        } while (!records.isEmpty() && iteration < maxKafkaPollIterations);
     }
 
     @AfterEach

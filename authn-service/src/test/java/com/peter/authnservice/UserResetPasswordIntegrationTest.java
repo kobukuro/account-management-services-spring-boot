@@ -85,6 +85,9 @@ public class UserResetPasswordIntegrationTest {
     @Value("${jwt.reset-password.expiration}")
     private long resetPasswordTokenExpirationInMilliseconds;
 
+    @Value("${test.kafka.max-poll-iterations}")
+    private int maxKafkaPollIterations;
+
     @BeforeAll
     static void setupKafkaConsumer() {
         Map<String, Object> consumerProps = new HashMap<>();
@@ -110,7 +113,13 @@ public class UserResetPasswordIntegrationTest {
         flyway.clean();
         flyway.migrate();
 
-        consumer.poll(Duration.ofMillis(100));
+        // Clear Kafka events before each test
+        ConsumerRecords<String, Event> records;
+        int iteration = 0;
+        do {
+            records = consumer.poll(Duration.ofMillis(500));
+            iteration++;
+        } while (!records.isEmpty() && iteration < maxKafkaPollIterations);
     }
 
     @AfterEach

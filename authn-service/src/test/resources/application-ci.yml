@@ -42,3 +42,6 @@ google:
   oauth2:
     client-id: ${GOOGLE_OAUTH2_CLIENT_ID}
     client-secret: ${GOOGLE_OAUTH2_CLIENT_SECRET}
+test:
+  kafka:
+    max-poll-iterations: 20
