@@ -384,7 +384,7 @@ public class UserRegistrationIntegrationTest {
         UserRegistrationRequest invalidRequest = new UserRegistrationRequest(
                 firstName,
                 lastName,
-                "test@example.com",
+                testEmail,
                 ""
         );
 
