@@ -77,6 +77,9 @@ public class PasswordChangeIntegrationTest {
     @Value("${app-name}")
     private String appName;
 
+    @Value("${test.kafka.max-poll-iterations}")
+    private int maxKafkaPollIterations;
+
     @BeforeAll
     static void setupKafkaConsumer() {
         Map<String, Object> consumerProps = new HashMap<>();
@@ -104,12 +107,11 @@ public class PasswordChangeIntegrationTest {
 
         // Clear Kafka events before each test
         ConsumerRecords<String, Event> records;
-        int maxIterations = 20;
         int iteration = 0;
         do {
             records = consumer.poll(Duration.ofMillis(500));
             iteration++;
-        } while (!records.isEmpty() && iteration < maxIterations);
+        } while (!records.isEmpty() && iteration < maxKafkaPollIterations);
     }
 
     @AfterEach
