@@ -110,7 +110,14 @@ public class UserResetPasswordIntegrationTest {
         flyway.clean();
         flyway.migrate();
 
-        consumer.poll(Duration.ofMillis(100));
+        // Clear Kafka events before each test
+        ConsumerRecords<String, Event> records;
+        int maxIterations = 20;
+        int iteration = 0;
+        do {
+            records = consumer.poll(Duration.ofMillis(500));
+            iteration++;
+        } while (!records.isEmpty() && iteration < maxIterations);
     }
 
     @AfterEach
