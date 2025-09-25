@@ -569,9 +569,6 @@ public class UserRegistrationIntegrationTest {
                         .content(objectMapper.writeValueAsString(activationRequest)))
                 .andExpect(status().isNoContent());
 
-        // Clear any pending messages
-        consumer.poll(Duration.ofSeconds(5));
-
         // Try to resend activation email for already verified user
         ActivationEmailResendRequest resendRequest = new ActivationEmailResendRequest(testEmail);
 
