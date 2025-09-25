@@ -145,6 +145,9 @@ public class UserResetPasswordIntegrationTest {
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isCreated());
 
+        // Clear any Kafka events from registration
+        consumer.poll(Duration.ofSeconds(5));
+
         UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).orElseThrow();
         userAuth.setEnabled(true);
         userAuthenticationRepository.save(userAuth);
@@ -228,6 +231,9 @@ public class UserResetPasswordIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isCreated());
+
+        // Clear any Kafka events from registration
+        consumer.poll(Duration.ofSeconds(5));
 
         UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).orElseThrow();
         AppUser user = userAuth.getUser();
