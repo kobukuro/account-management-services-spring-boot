@@ -30,13 +30,13 @@ public record UserRegistrationRequest(
         String email,
 
         @Schema(
-                description = "User's password - must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, one special character and no whitespace",
+                description = "User's password - must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character",
                 example = "Password123!"
         )
         @NotEmpty(message = "password field cannot be empty")
         @Pattern(
-                regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^a-zA-Z\\d])[A-Za-z\\d\\S]{8,}$",
-                message = "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, one special character and no whitespace"
+                regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^a-zA-Z\\d\\s]).{8,}$",
+                message = "Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character"
         )
         String password) {
 }

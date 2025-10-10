@@ -75,7 +75,7 @@ public class UserResetPasswordIntegrationTest {
     private final String firstName = "Jane";
     private final String lastName = "Smith";
     private final String testEmail = "test@example.com";
-    private final String password = "Password123!";
+    private final String password = "Password123! ";
 
     private final UserRegistrationRequest validRequest = new UserRegistrationRequest(firstName, lastName, testEmail, password);
 
@@ -459,32 +459,4 @@ public class UserResetPasswordIntegrationTest {
                         .content(objectMapper.writeValueAsString(noSpecial)))
                 .andExpect(status().isBadRequest());
     }
-
-    /**
-     * Test password reset with password containing whitespace
-     */
-    @Test
-    void whenPasswordContainsWhitespace_thenReturns400() throws Exception {
-        // Setup user
-        mockMvc.perform(post(REGISTER_API_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(validRequest)))
-                .andExpect(status().isCreated());
-
-        UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).orElseThrow();
-        AppUser user = userAuth.getUser();
-        userAuth.setEnabled(true);
-        userAuthenticationRepository.save(userAuth);
-
-        String resetToken = jwtUtils.generateResetPasswordToken(user.getId());
-
-        PasswordResetConfirmRequest withWhitespace = new PasswordResetConfirmRequest(
-                resetToken, "Password 123!");
-
-        mockMvc.perform(post(RESET_PASSWORD_CONFIRM_API_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(withWhitespace)))
-                .andExpect(status().isBadRequest());
-    }
-
 }
