@@ -73,7 +73,7 @@ public class UserRegistrationIntegrationTest {
     private final String firstName = "John";
     private final String lastName = "Doe";
     private final String testEmail = "test@example.com";
-    private final String password = "Password123!";
+    private final String password = "Password123! ";
 
     private final UserRegistrationRequest validRequest = new UserRegistrationRequest(firstName, lastName, testEmail, password);
 
@@ -255,26 +255,6 @@ public class UserRegistrationIntegrationTest {
                 lastName,
                 testEmail,
                 "Pass1!"
-        );
-
-        mockMvc.perform(post(REGISTER_API_PATH)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(invalidRequest)))
-                .andExpect(status().isBadRequest());
-
-        assertEquals(0, userRepository.count());
-    }
-
-    /**
-     * Test password with whitespace
-     */
-    @Test
-    void whenPasswordWithWhitespace_thenReturns400() throws Exception {
-        UserRegistrationRequest invalidRequest = new UserRegistrationRequest(
-                firstName,
-                lastName,
-                testEmail,
-                "Password 123!"
         );
 
         mockMvc.perform(post(REGISTER_API_PATH)

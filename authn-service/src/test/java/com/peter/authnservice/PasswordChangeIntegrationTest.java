@@ -71,8 +71,8 @@ public class PasswordChangeIntegrationTest {
     private final String firstName = "John";
     private final String lastName = "Doe";
     private final String testEmail = "test@example.com";
-    private final String currentPassword = "Password123!";
-    private final String newPassword = "NewPassword456!";
+    private final String currentPassword = "Password123! ";
+    private final String newPassword = "NewPassword456! ";
 
     @Value("${app-name}")
     private String appName;
@@ -335,23 +335,6 @@ public class PasswordChangeIntegrationTest {
         String accessToken = generateAccessToken(user.getId());
 
         PasswordChangeRequest request = new PasswordChangeRequest(currentPassword, "New1!");
-
-        mockMvc.perform(post(CHANGE_PASSWORD_API_PATH)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
-    }
-
-    /**
-     * Test password change with new password containing whitespace
-     */
-    @Test
-    void whenNewPasswordWithWhitespace_thenReturns400() throws Exception {
-        AppUser user = createActivatedUser();
-        String accessToken = generateAccessToken(user.getId());
-
-        PasswordChangeRequest request = new PasswordChangeRequest(currentPassword, "New Password123!");
 
         mockMvc.perform(post(CHANGE_PASSWORD_API_PATH)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
