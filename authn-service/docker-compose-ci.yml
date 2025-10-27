@@ -10,4 +10,5 @@ services:
       file: docker-compose.yml
       service: kafka
 volumes:
+  postgres-data:
   kafka_data:
