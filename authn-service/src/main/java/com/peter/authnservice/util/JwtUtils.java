@@ -101,7 +101,7 @@ public class JwtUtils {
             return jwt.getSubject() == null ? null : UUID.fromString(jwt.getSubject());
         } catch (JWTVerificationException e) {
             throw new IllegalArgumentException("Invalid token", e);
-        } catch (NumberFormatException e) {
+        } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Invalid user ID in token", e);
         }
     }
