@@ -20,13 +20,17 @@ spring:
         - id: activation-route
           uri: ${AUTHN_URI}
           predicates:
-              - Path=/api/v1/users/activation
+            - Path=/api/v1/users/activation
           filters:
               - name: RequestRateLimiter
                 args:
                     redis-rate-limiter.replenishRate: 1  # requests per second
                     redis-rate-limiter.burstCapacity: 2  # maximum requests can be done in parallel
                     key-resolver: "#{@ipKeyResolver}"
+        - id: other-authentication-service-routes
+          uri: ${AUTHN_URI}
+          predicates:
+            - Path=/api/v1/users/**
         - id: authn-api-docs-route
           uri: ${AUTHN_URI}
           predicates:
