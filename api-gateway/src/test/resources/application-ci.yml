@@ -1,0 +1,46 @@
+spring:
+  config:
+    import: optional:file:.env[.properties]
+  cloud:
+    gateway:
+      routes:
+        - id: register-route
+          uri: http://localhost:8080
+          predicates:
+            - Path=/api/v1/users
+            - Method=POST
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 2  # requests per second
+                redis-rate-limiter.burstCapacity: 4  # maximum requests can be done in parallel
+                key-resolver: "#{@ipKeyResolver}"
+        - id: activation-route
+          uri: http://localhost:8080
+          predicates:
+            - Path=/api/v1/users/activation
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 1  # requests per second
+                redis-rate-limiter.burstCapacity: 2  # maximum requests can be done in parallel
+                key-resolver: "#{@ipKeyResolver}"
+        - id: other-authentication-service-routes
+          uri: http://localhost:8080
+          predicates:
+            - Path=/api/v1/users/**
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins: http://localhost:3000
+            allowedMethods: GET,POST,PUT,PATCH,DELETE,OPTIONS
+            allowedHeaders: Authorization,Content-Type
+            allowCredentials: false
+            maxAge: 3600
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ${REDIS_PASSWORD}
+server:
+  port: 8000
