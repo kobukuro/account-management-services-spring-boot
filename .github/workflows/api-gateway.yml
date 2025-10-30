@@ -16,6 +16,9 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
+
     defaults:
       run:
         working-directory: ./api-gateway
@@ -49,7 +52,7 @@ jobs:
           elapsed=0
           interval=2
           
-          until docker compose exec -T redis redis-cli -a redis_password ping | grep -q PONG; do
+          until docker compose exec -T redis redis-cli -a "${REDIS_PASSWORD}" ping | grep -q PONG; do
           if [ $elapsed -ge $timeout ]; then
           echo "Redis failed to become ready after ${timeout} seconds"
           docker compose logs redis
@@ -62,7 +65,7 @@ jobs:
           echo "Redis is ready!"
 
       - name: Verify Redis connection
-        run: docker compose exec -T redis redis-cli -a redis_password INFO server | grep redis_version
+        run: docker compose exec -T redis redis-cli -a "${REDIS_PASSWORD}" INFO server | grep redis_version
 
       - name: Build and Test
         run: mvn -B verify
