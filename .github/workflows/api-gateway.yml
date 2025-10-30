@@ -68,7 +68,7 @@ jobs:
         run: docker compose exec -T redis redis-cli -a "${REDIS_PASSWORD}" INFO server | grep redis_version
 
       - name: Build and Test
-        run: mvn -B verify -Pci
+        run: mvn -B verify
 
       - name: Upload Test Results
         if: always()
