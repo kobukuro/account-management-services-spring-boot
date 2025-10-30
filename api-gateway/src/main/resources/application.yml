@@ -20,7 +20,7 @@ spring:
         - id: activation-route
           uri: ${AUTHN_URI}
           predicates:
-              - Path=/api/v1/users/activation
+            - Path=/api/v1/users/activation
           filters:
               - name: RequestRateLimiter
                 args:
@@ -30,7 +30,7 @@ spring:
         - id: other-authentication-service-routes
           uri: ${AUTHN_URI}
           predicates:
-              - Path=/api/v1/users/**
+            - Path=/api/v1/users/**
         - id: authn-api-docs-route
           uri: ${AUTHN_URI}
           predicates:
