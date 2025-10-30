@@ -1,0 +1,79 @@
+name: API Gateway CI
+
+on:
+  pull_request:
+    paths:
+      - 'api-gateway/**'
+      - '.github/workflows/api-gateway.yml'
+  push:
+    branches: [ main, dev ]
+    paths:
+      - 'api-gateway/**'
+      - '.github/workflows/api-gateway.yml'
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./api-gateway
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Cache Maven packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Start Redis with Docker Compose
+        run: docker compose up -d
+
+      - name: Wait for Redis to be ready
+        run: |
+          echo "Waiting for Redis to be ready..."
+          timeout=120
+          elapsed=0
+          interval=2
+          
+          until docker compose exec -T redis redis-cli -a redis_password ping | grep -q PONG; do
+          if [ $elapsed -ge $timeout ]; then
+          echo "Redis failed to become ready after ${timeout} seconds"
+          docker compose logs redis
+          exit 1
+          fi
+          echo "Waiting for Redis... (${elapsed}s/${timeout}s)"
+          sleep $interval
+          elapsed=$((elapsed + interval))
+          done
+          echo "Redis is ready!"
+
+      - name: Verify Redis connection
+        run: docker compose exec -T redis redis-cli -a redis_password INFO server | grep redis_version
+
+      - name: Build and Test
+        run: mvn -B verify
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: api-gateway/target/surefire-reports/
+
+      - name: Stop Docker Compose
+        if: always()
+        run: docker compose down -v
