@@ -57,10 +57,10 @@ public class TemplateValidator {
      * Gets the required variables for a specific template.
      *
      * @param templateName the name of the template
-     * @return set of required variable names, or empty set if template not registered
+     * @return immutable set of required variable names, or empty set if template not registered
      */
     public Set<String> getRequiredVariables(String templateName) {
-        return TEMPLATE_REQUIRED_VARIABLES.getOrDefault(templateName, Collections.emptySet());
+        return Collections.unmodifiableSet(TEMPLATE_REQUIRED_VARIABLES.getOrDefault(templateName, Collections.emptySet()));
     }
 
     /**
