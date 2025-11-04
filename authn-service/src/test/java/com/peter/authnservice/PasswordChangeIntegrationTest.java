@@ -136,6 +136,7 @@ public class PasswordChangeIntegrationTest {
 
         AppUser user = new AppUser(firstName, lastName, true);
         UserAuthentication userAuth = createLocalAuth(user, testEmail, hashedPassword);
+        userAuth.setEnabled(true);
         AppUser appUser = userRepository.save(user);
         userAuthenticationRepository.save(userAuth);
 
@@ -546,5 +547,53 @@ public class PasswordChangeIntegrationTest {
                         .content(objectMapper.writeValueAsString(
                                 new PasswordChangeRequest("NewPassword1!", "NewPassword2!"))))
                 .andExpect(status().isNoContent());
+    }
+
+    /**
+     * Test accessing change password endpoint with disabled user
+     */
+    @Test
+    void whenUserDisabled_thenChangePasswordFails() throws Exception {
+        // Create disabled user
+        AppUser disabledUser = new AppUser(firstName, lastName, false);
+        disabledUser = userRepository.save(disabledUser);
+
+        String hashedPassword = BCrypt.hashpw(currentPassword, BCrypt.gensalt());
+        UserAuthentication userAuth = createLocalAuth(disabledUser, testEmail, hashedPassword);
+        userAuth.setEnabled(true);
+        userAuthenticationRepository.save(userAuth);
+
+        String token = jwtUtils.generateAccessToken(disabledUser.getId());
+
+        PasswordChangeRequest request = new PasswordChangeRequest(currentPassword, newPassword);
+
+        mockMvc.perform(post(CHANGE_PASSWORD_API_PATH)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
+    }
+
+    /**
+     * Test accessing change password endpoint with unverified email
+     */
+    @Test
+    void whenUserEmailUnverified_thenChangePasswordFails() throws Exception {
+        String hashedPassword = BCrypt.hashpw(currentPassword, BCrypt.gensalt());
+
+        AppUser user = new AppUser(firstName, lastName, true);
+        UserAuthentication userAuth = createLocalAuth(user, testEmail, hashedPassword);
+        AppUser appUser = userRepository.save(user);
+        userAuthenticationRepository.save(userAuth);
+
+        String token = jwtUtils.generateAccessToken(appUser.getId());
+
+        PasswordChangeRequest request = new PasswordChangeRequest(currentPassword, newPassword);
+
+        mockMvc.perform(post(CHANGE_PASSWORD_API_PATH)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
     }
 }
