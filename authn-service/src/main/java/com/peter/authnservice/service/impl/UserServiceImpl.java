@@ -242,7 +242,7 @@ public class UserServiceImpl implements UserService {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new TokenNotValidException("Invalid or expired token"));
 
-        if (!user.getEnabled()){
+        if (!user.getEnabled()) {
             throw new UserAccountDisabledException("User account is disabled.");
         }
 
@@ -250,7 +250,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
         if (!userAuth.getEnabled()) {
-                throw new EmailNotVerifiedException("This email has not been verified.\nPlease check your email for the verification link.");
+            throw new EmailNotVerifiedException("This email has not been verified.\nPlease check your email for the verification link.");
         }
 
         if (!BCrypt.checkpw(currentPassword, userAuth.getPassword())) {
