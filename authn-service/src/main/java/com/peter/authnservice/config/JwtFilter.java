@@ -126,11 +126,6 @@ public class JwtFilter extends OncePerRequestFilter {
             }
 
             UUID userId = jwtUtils.getUserIdFromToken(jwt);
-            if (userId == null) {
-                logAuthenticationFailure(request, "JWT token missing user ID in payload");
-                sendUnauthorizedResponse(response);
-                return;
-            }
 
             UserDetails userDetails = userDetailsService.loadUserByUserId(userId);
             authenticateUser(request, userId, userDetails);
