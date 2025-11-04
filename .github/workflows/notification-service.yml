@@ -1,0 +1,40 @@
+name: Notification Service
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/notification-service.yml'
+      - 'notification-service/**'
+  push:
+    branches: [ main, dev ]
+    paths:
+      - '.github/workflows/notification-service.yml'
+      - 'notification-service/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: ./notification-service
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build and Test
+        run: mvn -B verify
+
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: authn-service/target/surefire-reports/
