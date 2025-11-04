@@ -49,6 +49,7 @@ public class JwtFilter extends OncePerRequestFilter {
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String AUTH_ERROR_MESSAGE = "Unauthorized";
+    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
     private final JwtUtils jwtUtils;
     private final CustomUserDetailsService userDetailsService;
@@ -78,9 +79,8 @@ public class JwtFilter extends OncePerRequestFilter {
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
-        AntPathMatcher pathMatcher = new AntPathMatcher();
         return Arrays.stream(SecurityConfig.PUBLIC_PATHS)
-                .anyMatch(pattern -> pathMatcher.match(pattern, path));
+                .anyMatch(pattern -> PATH_MATCHER.match(pattern, path));
     }
 
     /**
