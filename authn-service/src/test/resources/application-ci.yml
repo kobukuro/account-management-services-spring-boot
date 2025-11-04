@@ -42,6 +42,9 @@ google:
   oauth2:
     client-id: ${GOOGLE_OAUTH2_CLIENT_ID}
     client-secret: ${GOOGLE_OAUTH2_CLIENT_SECRET}
+
+trusted-proxy-ips: ${TRUSTED_PROXY_IPS:127.0.0.1,::1}
+
 test:
   kafka:
     max-poll-iterations: 20

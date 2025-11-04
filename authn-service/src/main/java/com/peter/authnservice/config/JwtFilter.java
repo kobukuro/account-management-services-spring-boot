@@ -18,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -53,16 +54,19 @@ public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtUtils jwtUtils;
     private final CustomUserDetailsService userDetailsService;
+    private final Set<String> trustedProxyIps;
 
     /**
      * Constructs a new JwtFilter with required dependencies.
      *
      * @param userDetailsService service for loading user details by user ID
      * @param jwtUtils           utility for JWT token validation and parsing
+     * @param trustedProxyIps    set of trusted proxy IP addresses for validating proxy headers
      */
-    public JwtFilter(CustomUserDetailsService userDetailsService, JwtUtils jwtUtils) {
+    public JwtFilter(CustomUserDetailsService userDetailsService, JwtUtils jwtUtils, Set<String> trustedProxyIps) {
         this.userDetailsService = userDetailsService;
         this.jwtUtils = jwtUtils;
+        this.trustedProxyIps = trustedProxyIps;
     }
 
     /**
@@ -183,27 +187,52 @@ public class JwtFilter extends OncePerRequestFilter {
     }
 
     /**
-     * Extracts the client's IP address from the HTTP request.
+     * Extracts the client's IP address from the HTTP request with proxy validation.
      * <p>
-     * This method checks common proxy headers (X-Forwarded-For, X-Real-IP) before falling back
-     * to the direct remote address. This is important for accurate logging when the application
-     * is behind a reverse proxy or load balancer.
+     * This method safely extracts the client's IP address by validating that proxy headers
+     * (X-Forwarded-For, X-Real-IP) are only trusted when the request originates from a configured
+     * trusted proxy. This prevents IP spoofing attacks where malicious clients could set these
+     * headers directly to impersonate other users in security logs.
+     * <p>
+     * The method follows this priority order:
+     * <ol>
+     *   <li>If the immediate client is a trusted proxy, check X-Forwarded-For header for the original client IP</li>
+     *   <li>If the immediate client is a trusted proxy, check X-Real-IP header as fallback</li>
+     *   <li>Otherwise, use the direct remote address (not trusting any proxy headers)</li>
+     * </ol>
+     * <p>
+     * Trusted proxy IPs are configured via the {@code trusted-proxy-ips} property and should include:
+     * <ul>
+     *   <li>Localhost addresses (127.0.0.1, ::1) for local development</li>
+     *   <li>Internal IP addresses of reverse proxies (e.g., API Gateway, load balancers)</li>
+     *   <li>Docker network addresses if running in containers</li>
+     * </ul>
+     * <p>
+     * This approach follows OWASP security best practices for handling proxy headers and prevents
+     * the security vulnerability where untrusted clients could manipulate their logged IP address.
      *
      * @param request the HTTP servlet request
      * @return the client's IP address, or "unknown" if it cannot be determined
      */
     private String getClientIpAddress(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-
-        String xRealIp = request.getHeader("X-Real-IP");
-        if (xRealIp != null && !xRealIp.isEmpty()) {
-            return xRealIp;
-        }
-
         String remoteAddr = request.getRemoteAddr();
+        
+        // Only trust proxy headers if the immediate client is a trusted proxy
+        if (remoteAddr != null && trustedProxyIps.contains(remoteAddr)) {
+            String xForwardedFor = request.getHeader("X-Forwarded-For");
+            if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+                // X-Forwarded-For can contain multiple IPs (client, proxy1, proxy2, ...)
+                // The first IP is the original client
+                return xForwardedFor.split(",")[0].trim();
+            }
+
+            String xRealIp = request.getHeader("X-Real-IP");
+            if (xRealIp != null && !xRealIp.isEmpty()) {
+                return xRealIp;
+            }
+        }
+
+        // If not from trusted proxy or no proxy headers, use direct remote address
         return remoteAddr != null ? remoteAddr : "unknown";
     }
 
