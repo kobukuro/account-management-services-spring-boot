@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
@@ -163,6 +164,18 @@ public class UserRegistrationIntegrationTest {
         Long expectedHours = verificationTokenExpirationInMilliseconds / 3600000L;
         Long actualHours = Long.valueOf(event.email().model().get("expirationHours").toString());
         assertEquals(expectedHours, actualHours);
+    }
+
+    /**
+     * Test that public endpoints work even with invalid token
+     */
+    @Test
+    void whenAccessingPublicEndpointWithInvalidToken_thenSuccess() throws Exception {
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer invalid-token")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest)))
+                .andExpect(status().isCreated());
     }
 
     /**
