@@ -358,7 +358,7 @@ public class PasswordChangeIntegrationTest {
     @Test
     void whenAuthorizationHeaderWithoutBearer_thenReturns401() throws Exception {
         AppUser user = createActivatedUser();
-        String token = jwtUtils.generateAccessToken(user.getId());
+        String token = generateAccessToken(user.getId());
 
         PasswordChangeRequest request = new PasswordChangeRequest(currentPassword, newPassword);
 
@@ -389,7 +389,7 @@ public class PasswordChangeIntegrationTest {
     @Test
     void whenLowercaseBearerPrefix_thenReturns401() throws Exception {
         AppUser user = createActivatedUser();
-        String token = jwtUtils.generateAccessToken(user.getId());
+        String token = generateAccessToken(user.getId());
 
         PasswordChangeRequest request = new PasswordChangeRequest(currentPassword, newPassword);
 
@@ -529,7 +529,7 @@ public class PasswordChangeIntegrationTest {
     @Test
     void whenReusingValidToken_thenSucceeds() throws Exception {
         AppUser user = createActivatedUser();
-        String token = jwtUtils.generateAccessToken(user.getId());
+        String token = generateAccessToken(user.getId());
 
         // First request
         mockMvc.perform(post(CHANGE_PASSWORD_API_PATH)
