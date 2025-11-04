@@ -1,5 +1,7 @@
 package com.peter.authnservice;
 
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.peter.authnservice.domain.dto.PasswordChangeRequest;
 import com.peter.authnservice.domain.entity.AppUser;
@@ -30,10 +32,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.Duration;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 import static com.peter.authnservice.domain.entity.UserAuthentication.createLocalAuth;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -79,6 +78,9 @@ public class PasswordChangeIntegrationTest {
 
     @Value("${test.kafka.max-poll-iterations}")
     private int maxKafkaPollIterations;
+
+    @Value("${secret-key}")
+    private String secretKey;
 
     @BeforeAll
     static void setupKafkaConsumer() {
@@ -238,6 +240,54 @@ public class PasswordChangeIntegrationTest {
     }
 
     /**
+     * Test with token signed with wrong secret
+     */
+    @Test
+    void whenTokenWithWrongSecret_thenReturns401() throws Exception {
+        AppUser user = createActivatedUser();
+
+        // Create token with wrong secret
+        Algorithm wrongAlgorithm = Algorithm.HMAC256("wrong-secret-key");
+        String tokenWithWrongSignature = JWT.create()
+                .withSubject(user.getId().toString())
+                .withIssuedAt(new Date())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 3600000))
+                .sign(wrongAlgorithm);
+
+        PasswordChangeRequest request = new PasswordChangeRequest(currentPassword, newPassword);
+
+        mockMvc.perform(post(CHANGE_PASSWORD_API_PATH)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenWithWrongSignature)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * Test password change with expired access token
+     */
+    @Test
+    void whenExpiredAccessToken_thenReturns401() throws Exception {
+        AppUser user = createActivatedUser();
+
+        // Create expired token (expired 1 hour ago)
+        Algorithm algorithm = Algorithm.HMAC256(secretKey);
+        String expiredToken = JWT.create()
+                .withSubject(user.getId().toString())
+                .withIssuedAt(new Date(System.currentTimeMillis() - 7200000)) // 2 hours ago
+                .withExpiresAt(new Date(System.currentTimeMillis() - 3600000)) // 1 hour ago
+                .sign(algorithm);
+
+        PasswordChangeRequest request = new PasswordChangeRequest(currentPassword, newPassword);
+
+        mockMvc.perform(post(CHANGE_PASSWORD_API_PATH)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + expiredToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /**
      * Test password change with non-existent user ID in token
      */
     @Test
@@ -249,6 +299,102 @@ public class PasswordChangeIntegrationTest {
 
         mockMvc.perform(post(CHANGE_PASSWORD_API_PATH)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * Test with token containing invalid user ID format
+     */
+    @Test
+    void whenTokenWithInvalidUserIdFormat_thenReturns401() throws Exception {
+        Algorithm algorithm = Algorithm.HMAC256(secretKey);
+        String tokenWithInvalidUserId = JWT.create()
+                .withSubject("not-a-valid-uuid")
+                .withIssuedAt(new Date())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 3600000))
+                .sign(algorithm);
+
+        PasswordChangeRequest request = new PasswordChangeRequest(currentPassword, newPassword);
+
+        mockMvc.perform(post(CHANGE_PASSWORD_API_PATH)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + tokenWithInvalidUserId)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * Test with missing Authorization header on protected endpoint
+     */
+    @Test
+    void whenMissingAuthorizationHeader_thenReturns401() throws Exception {
+        PasswordChangeRequest request = new PasswordChangeRequest(currentPassword, newPassword);
+
+        mockMvc.perform(post(CHANGE_PASSWORD_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * Test with empty Authorization header
+     */
+    @Test
+    void whenEmptyAuthorizationHeader_thenReturns401() throws Exception {
+        PasswordChangeRequest request = new PasswordChangeRequest(currentPassword, newPassword);
+
+        mockMvc.perform(post(CHANGE_PASSWORD_API_PATH)
+                        .header(HttpHeaders.AUTHORIZATION, "")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * Test with Authorization header without Bearer prefix
+     */
+    @Test
+    void whenAuthorizationHeaderWithoutBearer_thenReturns401() throws Exception {
+        AppUser user = createActivatedUser();
+        String token = generateAccessToken(user.getId());
+
+        PasswordChangeRequest request = new PasswordChangeRequest(currentPassword, newPassword);
+
+        mockMvc.perform(post(CHANGE_PASSWORD_API_PATH)
+                        .header(HttpHeaders.AUTHORIZATION, token) // Missing "Bearer " prefix
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * Test with Bearer prefix but no token
+     */
+    @Test
+    void whenBearerPrefixWithoutToken_thenReturns401() throws Exception {
+        PasswordChangeRequest request = new PasswordChangeRequest(currentPassword, newPassword);
+
+        mockMvc.perform(post(CHANGE_PASSWORD_API_PATH)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer ")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    /**
+     * Test with lowercase bearer prefix
+     */
+    @Test
+    void whenLowercaseBearerPrefix_thenReturns401() throws Exception {
+        AppUser user = createActivatedUser();
+        String token = generateAccessToken(user.getId());
+
+        PasswordChangeRequest request = new PasswordChangeRequest(currentPassword, newPassword);
+
+        mockMvc.perform(post(CHANGE_PASSWORD_API_PATH)
+                        .header(HttpHeaders.AUTHORIZATION, "bearer " + token)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isUnauthorized());
@@ -375,5 +521,30 @@ public class PasswordChangeIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * Test that valid token can be used multiple times
+     */
+    @Test
+    void whenReusingValidToken_thenSucceeds() throws Exception {
+        AppUser user = createActivatedUser();
+        String token = generateAccessToken(user.getId());
+
+        // First request
+        mockMvc.perform(post(CHANGE_PASSWORD_API_PATH)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new PasswordChangeRequest(currentPassword, "NewPassword1!"))))
+                .andExpect(status().isNoContent());
+
+        // Second request with same token (password changed, so use new password)
+        mockMvc.perform(post(CHANGE_PASSWORD_API_PATH)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new PasswordChangeRequest("NewPassword1!", "NewPassword2!"))))
+                .andExpect(status().isNoContent());
     }
 }
