@@ -45,11 +45,11 @@ import java.util.UUID;
 @Component
 public class JwtFilter extends OncePerRequestFilter {
     private static final Logger logger = LoggerFactory.getLogger(JwtFilter.class);
+    private static final AntPathMatcher pathMatcher = new AntPathMatcher();
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String AUTH_ERROR_MESSAGE = "Unauthorized";
-    private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
     private final JwtUtils jwtUtils;
     private final CustomUserDetailsService userDetailsService;
@@ -80,7 +80,7 @@ public class JwtFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) {
         String path = request.getRequestURI();
         return Arrays.stream(SecurityConfig.PUBLIC_PATHS)
-                .anyMatch(pattern -> PATH_MATCHER.match(pattern, path));
+                .anyMatch(pattern -> pathMatcher.match(pattern, path));
     }
 
     /**
