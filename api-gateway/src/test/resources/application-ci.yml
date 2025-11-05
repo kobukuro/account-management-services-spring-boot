@@ -19,6 +19,7 @@ spring:
           uri: http://localhost:8080
           predicates:
             - Path=/api/v1/users/activation
+            - Method=POST
           filters:
             - name: RequestRateLimiter
               args:
