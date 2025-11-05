@@ -43,7 +43,7 @@ class NotificationKafkaIntegrationTest {
     }
 
     @Test
-    void shouldConsumeUserRegistrationEvent() throws Exception {
+    void shouldConsumeUserRegistrationEvent() {
         // Given
         UserDetails userDetails = new UserDetails("John", "Doe", "john.doe@example.com");
         Email email = new Email(
@@ -59,7 +59,7 @@ class NotificationKafkaIntegrationTest {
         Event event = new Event(userDetails, email);
 
         // When
-        kafkaTemplate.send("user_registration", event).get(10, TimeUnit.SECONDS);
+        kafkaTemplate.send("user_registration", event);
 
         // Then
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
@@ -78,7 +78,7 @@ class NotificationKafkaIntegrationTest {
     }
 
     @Test
-    void shouldConsumePasswordResetEvent() throws Exception {
+    void shouldConsumePasswordResetEvent() {
         // Given
         UserDetails userDetails = new UserDetails("Jane", "Smith", "jane.smith@example.com");
         Email email = new Email(
@@ -93,7 +93,7 @@ class NotificationKafkaIntegrationTest {
         Event event = new Event(userDetails, email);
 
         // When
-        kafkaTemplate.send("password_reset", event).get(10, TimeUnit.SECONDS);
+        kafkaTemplate.send("password_reset", event);
 
         // Then
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
@@ -111,7 +111,7 @@ class NotificationKafkaIntegrationTest {
     }
 
     @Test
-    void shouldConsumePasswordResetConfirmEvent() throws Exception {
+    void shouldConsumePasswordResetConfirmEvent() {
         // Given
         UserDetails userDetails = new UserDetails("Bob", "Johnson", "bob.johnson@example.com");
         Email email = new Email(
@@ -124,7 +124,7 @@ class NotificationKafkaIntegrationTest {
         Event event = new Event(userDetails, email);
 
         // When
-        kafkaTemplate.send("password_reset_confirm", event).get(10, TimeUnit.SECONDS);
+        kafkaTemplate.send("password_reset_confirm", event);
 
         // Then
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
@@ -141,7 +141,7 @@ class NotificationKafkaIntegrationTest {
     }
 
     @Test
-    void shouldConsumePasswordChangeEvent() throws Exception {
+    void shouldConsumePasswordChangeEvent() {
         // Given
         UserDetails userDetails = new UserDetails("Alice", "Williams", "alice.williams@example.com");
         Email email = new Email(
@@ -154,7 +154,7 @@ class NotificationKafkaIntegrationTest {
         Event event = new Event(userDetails, email);
 
         // When
-        kafkaTemplate.send("password_change", event).get(10, TimeUnit.SECONDS);
+        kafkaTemplate.send("password_change", event);
 
         // Then
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
@@ -170,7 +170,7 @@ class NotificationKafkaIntegrationTest {
     }
 
     @Test
-    void shouldConsumeResendActivationEvent() throws Exception {
+    void shouldConsumeResendActivationEvent() {
         // Given
         UserDetails userDetails = new UserDetails("Charlie", "Brown", "charlie.brown@example.com");
         Email email = new Email(
@@ -186,7 +186,7 @@ class NotificationKafkaIntegrationTest {
         Event event = new Event(userDetails, email);
 
         // When
-        kafkaTemplate.send("resend_activation", event).get(10, TimeUnit.SECONDS);
+        kafkaTemplate.send("resend_activation", event);
 
         // Then
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
@@ -205,7 +205,7 @@ class NotificationKafkaIntegrationTest {
     }
 
     @Test
-    void shouldHandleMultipleEventsSequentially() throws Exception {
+    void shouldHandleMultipleEventsSequentially() {
         // Given - Multiple events for different topics
         UserDetails userDetails1 = new UserDetails("John", "Doe", "john.doe@example.com");
         Email email1 = new Email(
@@ -243,9 +243,9 @@ class NotificationKafkaIntegrationTest {
         Event event3 = new Event(userDetails3, email3);
 
         // When - Send multiple events to different topics
-        kafkaTemplate.send("user_registration", event1).get(10, TimeUnit.SECONDS);
-        kafkaTemplate.send("password_reset", event2).get(10, TimeUnit.SECONDS);
-        kafkaTemplate.send("password_change", event3).get(10, TimeUnit.SECONDS);
+        kafkaTemplate.send("user_registration", event1);
+        kafkaTemplate.send("password_reset", event2);
+        kafkaTemplate.send("password_change", event3);
 
         // Then - Verify all events were processed
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
