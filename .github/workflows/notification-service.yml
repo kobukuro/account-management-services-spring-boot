@@ -15,14 +15,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    env:
-      MAIL_HOST: ${{ secrets.MAIL_HOST }}
-      MAIL_PORT: ${{ secrets.MAIL_PORT }}
-      MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
-      MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
-      MAIL_NAME: ${{ secrets.MAIL_NAME }}
-      MAIL_FROM: ${{ secrets.MAIL_FROM }}
-
     defaults:
       run:
         working-directory: ./notification-service
@@ -37,6 +29,26 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Start Docker Compose
+        run: docker compose -f docker-compose-ci.yml up -d
+
+      - name: Wait for Kafka to be ready
+        run: |
+          timeout=30
+          until docker compose exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list || [ $timeout -le 0 ]; do
+            echo "Waiting for Kafka..."
+            echo "Containers Status:"
+            docker ps -a
+            echo "Kafka Container Logs:"
+            docker logs kafka
+            sleep 1
+            ((timeout--))
+          done
+          if [ $timeout -le 0 ]; then
+            echo "Timed out waiting for Kafka"
+            exit 1
+          fi
+
       - name: Build and Test
         run: mvn -B verify
 
@@ -46,3 +58,7 @@ jobs:
         with:
           name: test-results
           path: notification-service/target/surefire-reports/
+
+      - name: Clean up
+        if: always()
+        run: docker compose -f docker-compose-ci.yml down -v
