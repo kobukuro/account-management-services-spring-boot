@@ -1,0 +1,19 @@
+spring:
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: test-notification-group
+      auto-offset-reset: earliest
+  mail:
+    host: localhost
+    port: 3025
+    username: test
+    password: test
+    name: Test Mail Service
+    properties:
+      mail:
+        from: noreply@test.com
+        smtp:
+          auth: false
+          starttls:
+            enable: false

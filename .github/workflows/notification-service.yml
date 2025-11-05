@@ -15,14 +15,6 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
-    env:
-      MAIL_HOST: ${{ secrets.MAIL_HOST }}
-      MAIL_PORT: ${{ secrets.MAIL_PORT }}
-      MAIL_USERNAME: ${{ secrets.MAIL_USERNAME }}
-      MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
-      MAIL_NAME: ${{ secrets.MAIL_NAME }}
-      MAIL_FROM: ${{ secrets.MAIL_FROM }}
-
     defaults:
       run:
         working-directory: ./notification-service
@@ -37,6 +29,41 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
+      - name: Start Docker Compose
+        run: docker compose -f docker-compose-ci.yml up -d
+
+      - name: Wait for Kafka to be ready
+        run: |
+          echo "Waiting for Kafka to be ready..."
+          timeout=60
+          until docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list &> /dev/null || [ $timeout -le 0 ]; do
+            echo "Waiting for Kafka... ($timeout seconds remaining)"
+            sleep 2
+            ((timeout-=2))
+          done
+
+          if [ $timeout -le 0 ]; then
+            echo "Timed out waiting for Kafka"
+            echo "Container Status:"
+            docker ps -a
+            echo "Kafka Logs:"
+            docker compose -f docker-compose-ci.yml logs kafka
+            exit 1
+          fi
+
+          echo "Kafka is ready!"
+
+          # Create topics explicitly
+          echo "Creating Kafka topics..."
+          docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic user_registration --partitions 1 --replication-factor 1
+          docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic resend_activation --partitions 1 --replication-factor 1
+          docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic password_reset --partitions 1 --replication-factor 1
+          docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic password_reset_confirm --partitions 1 --replication-factor 1
+          docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic password_change --partitions 1 --replication-factor 1
+
+          echo "Topics created successfully!"
+          docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list
+
       - name: Build and Test
         run: mvn -B verify
 
@@ -46,3 +73,7 @@ jobs:
         with:
           name: test-results
           path: notification-service/target/surefire-reports/
+
+      - name: Clean up
+        if: always()
+        run: docker compose -f docker-compose-ci.yml down -v
