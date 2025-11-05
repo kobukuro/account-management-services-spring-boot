@@ -23,7 +23,9 @@ import static org.mockito.Mockito.*;
 /**
  * Integration tests for Kafka consumer functionality in the notification service.
  */
-@SpringBootTest
+@SpringBootTest(properties = {
+        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.mail.MailSenderAutoConfiguration"
+})
 @ActiveProfiles("ci")
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class NotificationKafkaIntegrationTest {
