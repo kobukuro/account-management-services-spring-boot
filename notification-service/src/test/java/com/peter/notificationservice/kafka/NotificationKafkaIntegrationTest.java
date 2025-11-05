@@ -176,8 +176,8 @@ class NotificationKafkaIntegrationTest {
         Email email = new Email(
                 "Resend Activation Link",
                 "email/verification-email",
-                Map.of("firstName", "John",
-                        "lastName", "Doe",
+                Map.of("firstName", "Charlie",
+                        "lastName", "Brown",
                         "appName", "Our Service",
                         "verificationLink", "http://localhost:3000/activate?token=abc123",
                         "expirationHours", 24
@@ -194,8 +194,8 @@ class NotificationKafkaIntegrationTest {
                         eq("charlie.brown@example.com"),
                         eq("Resend Activation Link"),
                         eq("email/verification-email"),
-                        eq(Map.of("firstName", "John",
-                                "lastName", "Doe",
+                        eq(Map.of("firstName", "Charlie",
+                                "lastName", "Brown",
                                 "appName", "Our Service",
                                 "verificationLink", "http://localhost:3000/activate?token=abc123",
                                 "expirationHours", 24
