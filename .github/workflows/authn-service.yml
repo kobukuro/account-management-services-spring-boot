@@ -90,7 +90,6 @@ jobs:
             authn-service/target/jacoco.exec
 
       - name: Generate Coverage Summary
-        if: github.event_name == 'pull_request'
         run: |
           echo "## Code Coverage Report" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
