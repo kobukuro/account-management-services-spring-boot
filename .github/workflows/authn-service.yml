@@ -80,6 +80,32 @@ jobs:
           name: test-results
           path: authn-service/target/surefire-reports/
 
+      - name: Upload Coverage Reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: |
+            authn-service/target/site/jacoco/
+            authn-service/target/jacoco.exec
+
+      - name: Generate Coverage Summary
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "## Code Coverage Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          # Extract coverage percentages from JaCoCo HTML report
+          if [ -f target/site/jacoco/index.html ]; then
+            echo "Coverage report generated successfully!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Download the full coverage report from the artifacts." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "📊 View detailed coverage in the 'coverage-reports' artifact" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "⚠️ Coverage report not found" >> $GITHUB_STEP_SUMMARY
+          fi
+
       - name: Clean up
         if: always()
         run: docker compose -f docker-compose-ci.yml down -v
