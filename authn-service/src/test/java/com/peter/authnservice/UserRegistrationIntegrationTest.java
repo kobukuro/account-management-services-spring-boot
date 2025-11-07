@@ -179,6 +179,30 @@ public class UserRegistrationIntegrationTest {
     }
 
     /**
+     * Test request with missing body returns bad request
+     */
+    @Test
+    void whenMissingRequestBody_thenReturns400() throws Exception {
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Missing or invalid request body"));
+    }
+
+    /**
+     * Test request with invalid JSON returns bad request
+     */
+    @Test
+    void whenInvalidJsonRequestBody_thenReturns400() throws Exception {
+        String malformedJson = "{invalid json";
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(malformedJson))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("Missing or invalid request body"));
+    }
+
+    /**
      * Test password without uppercase letter
      */
     @Test
