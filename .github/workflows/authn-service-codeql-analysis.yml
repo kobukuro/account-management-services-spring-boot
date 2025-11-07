@@ -1,0 +1,95 @@
+name: "Authn Service CodeQL Security Analysis"
+
+on:
+  push:
+    branches: [ main, dev ]
+    paths:
+      - 'authn-service/**'
+      - '.github/workflows/authn-service-codeql-analysis.yml'
+  pull_request:
+    paths:
+      - 'authn-service/**'
+      - '.github/workflows/authn-service-codeql-analysis.yml'
+  schedule:
+    # Run every Monday at 00:00 UTC (weekly scan)
+    - cron: '0 0 * * 1'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  analyze:
+    name: Analyze Authentication Service
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    permissions:
+      # Required for CodeQL to upload results to GitHub
+      security-events: write
+      # Required to fetch code
+      contents: read
+      # Required for private repos
+      actions: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [ 'java' ]
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: ${{ matrix.language }}
+        # Specify additional queries for more thorough security analysis
+        queries: +security-extended,security-and-quality
+        # Limit to authn-service only
+        config: |
+          paths:
+            - authn-service/src/main
+          paths-ignore:
+            - authn-service/src/test
+            - '**/target/**'
+
+    - name: Build authn-service
+      working-directory: ./authn-service
+      run: |
+        # Build without running tests to speed up CodeQL analysis
+        ./mvnw clean package -DskipTests -Dmaven.javadoc.skip=true
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v3
+      with:
+        category: "/language:${{matrix.language}}"
+        # Upload results even if there are errors
+        upload: true
+
+    - name: Upload SARIF results as artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: codeql-results
+        path: ../results
+        retention-days: 7
+
+    - name: Add analysis summary
+      if: always()
+      run: |
+        echo "## 🔒 CodeQL Security Analysis Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ CodeQL has analyzed the authentication service for security vulnerabilities." >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "📊 **Analysis Details:**" >> $GITHUB_STEP_SUMMARY
+        echo "- **Service:** authn-service" >> $GITHUB_STEP_SUMMARY
+        echo "- **Language:** Java 21" >> $GITHUB_STEP_SUMMARY
+        echo "- **Queries:** Security Extended + Quality" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "🔍 View results in the **Security** tab → **Code scanning alerts**" >> $GITHUB_STEP_SUMMARY
