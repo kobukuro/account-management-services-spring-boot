@@ -288,7 +288,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new TokenNotValidException("Invalid or expired refresh token"));
 
         if (!user.getEnabled()) {
-            throw new TokenNotValidException("Invalid or expired refresh token");
+            throw new UserAccountDisabledException("User account is disabled.");
         }
 
         return jwtUtils.generateAccessToken(userId);
