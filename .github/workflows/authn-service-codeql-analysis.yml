@@ -63,7 +63,7 @@ jobs:
       working-directory: ./authn-service
       run: |
         # Build without running tests to speed up CodeQL analysis
-        ./mvnw clean package -DskipTests -Dmaven.javadoc.skip=true
+        mvn -B clean package -DskipTests -Dmaven.javadoc.skip=true
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v3
