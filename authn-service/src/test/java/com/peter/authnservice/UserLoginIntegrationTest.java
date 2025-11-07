@@ -6,6 +6,7 @@ import com.peter.authnservice.domain.entity.AppUser;
 import com.peter.authnservice.domain.entity.AuthenticationType;
 import com.peter.authnservice.domain.entity.UserAuthentication;
 import com.peter.authnservice.repository.UserAuthenticationRepository;
+import com.peter.authnservice.repository.UserRepository;
 import com.peter.authnservice.util.JwtUtils;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -43,6 +45,9 @@ public class UserLoginIntegrationTest {
 
     @Autowired
     private JwtUtils jwtUtils;
+
+    @Autowired
+    private UserRepository userRepository;
 
     @Autowired
     private UserAuthenticationRepository userAuthRepository;
@@ -282,5 +287,29 @@ public class UserLoginIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * Test refresh token with disabled account
+     */
+    @Test
+    void whenRefreshTokenWithDisabledAccount_thenReturns403() throws Exception {
+        AppUser user = new AppUser("John", "Doe", false);
+        user = userRepository.save(user);
+
+        UserAuthentication userAuth = UserAuthentication.createLocalAuth(
+                user,
+                email,
+                BCrypt.hashpw(password, BCrypt.gensalt())
+        );
+        userAuthRepository.save(userAuth);
+
+        String refreshToken = jwtUtils.generateRefreshToken(user.getId());
+        TokenRefreshRequest request = new TokenRefreshRequest(refreshToken);
+
+        mockMvc.perform(post(REFRESH_TOKEN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
     }
 }
