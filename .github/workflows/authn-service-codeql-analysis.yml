@@ -72,14 +72,6 @@ jobs:
         # Upload results even if there are errors
         upload: true
 
-    - name: Upload SARIF results as artifact
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: codeql-results
-        path: ${{ github.workspace }}/results
-        retention-days: 7
-
     - name: Add analysis summary
       if: always()
       run: |
