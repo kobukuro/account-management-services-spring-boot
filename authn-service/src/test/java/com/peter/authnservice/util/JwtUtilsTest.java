@@ -227,6 +227,21 @@ class JwtUtilsTest {
     }
 
     /**
+     * Test extracting user ID from token with null subject
+     */
+    @Test
+    void whenTokenWithNullSubject_thenGetUserIdReturnsNull() {
+        Algorithm algorithm = Algorithm.HMAC256(testSecret);
+        String tokenWithNullSubject = JWT.create()
+                .withIssuedAt(new Date())
+                .withExpiresAt(new Date(System.currentTimeMillis() + 3600000))
+                .sign(algorithm);
+
+        UUID extractedUserId = jwtUtils.getUserIdFromToken(tokenWithNullSubject);
+        assertNull(extractedUserId);
+    }
+
+    /**
      * Test extracting user ID from expired token
      */
     @Test
