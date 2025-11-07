@@ -40,6 +40,7 @@ import java.util.UUID;
 
 import static com.peter.authnservice.domain.entity.UserAuthentication.createLocalAuth;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -219,6 +220,45 @@ public class UserResetPasswordIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(resetRequest)))
                 .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * Test reset password with disabled account
+     */
+    @Test
+    void whenResetPasswordWithDisabledAccount_thenReturns403() throws Exception {
+        AppUser user = new AppUser("John", "Doe", false);
+        user = userRepository.save(user);
+
+        UserAuthentication userAuth = UserAuthentication.createLocalAuth(user, testEmail, BCrypt.hashpw(password, BCrypt.gensalt()));
+        userAuthenticationRepository.save(userAuth);
+
+        PasswordResetRequest request = new PasswordResetRequest(testEmail);
+
+        mockMvc.perform(post(RESET_PASSWORD_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("User account is disabled."));
+    }
+
+    /**
+     * Test reset password without local authentication
+     */
+    @Test
+    void whenResetPasswordWithoutLocalAuth_thenReturns404() throws Exception {
+        AppUser user = new AppUser("John", "Doe", true);
+        user = userRepository.save(user);
+
+        UserAuthentication userAuth = UserAuthentication.createOAuthAuth(user, AuthenticationType.GOOGLE, "google-123", testEmail);
+        userAuthenticationRepository.save(userAuth);
+
+        PasswordResetRequest request = new PasswordResetRequest(testEmail);
+
+        mockMvc.perform(post(RESET_PASSWORD_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound());
     }
 
     /**
@@ -458,5 +498,41 @@ public class UserResetPasswordIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(noSpecial)))
                 .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * Test password reset with non-existent user
+     */
+    @Test
+    void whenChangePasswordWithNonExistentUser_thenReturns404() throws Exception {
+        UUID nonExistentUserId = UUID.randomUUID();
+        String token = jwtUtils.generateResetPasswordToken(nonExistentUserId);
+        PasswordResetConfirmRequest request = new PasswordResetConfirmRequest(token, "NewPassword123!");
+
+        mockMvc.perform(post(RESET_PASSWORD_CONFIRM_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("User not found"));
+    }
+
+    /**
+     * Test reset password confirmation without local authentication
+     */
+    @Test
+    void whenChangePasswordWithoutLocalAuth_thenReturns404() throws Exception {
+        AppUser user = new AppUser("John", "Doe", true);
+        user = userRepository.save(user);
+
+        UserAuthentication userAuth = UserAuthentication.createOAuthAuth(user, AuthenticationType.GOOGLE, "google-123", testEmail);
+        userAuthenticationRepository.save(userAuth);
+
+        String token = jwtUtils.generateResetPasswordToken(user.getId());
+        PasswordResetConfirmRequest request = new PasswordResetConfirmRequest(token, "NewPassword123!");
+
+        mockMvc.perform(post(RESET_PASSWORD_CONFIRM_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound());
     }
 }

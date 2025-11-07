@@ -5,6 +5,7 @@ import com.peter.authnservice.domain.dto.ActivationEmailResendRequest;
 import com.peter.authnservice.domain.dto.UserActivationRequest;
 import com.peter.authnservice.domain.dto.UserRegistrationRequest;
 import com.peter.authnservice.domain.dto.UserRegistrationResponse;
+import com.peter.authnservice.domain.entity.AppUser;
 import com.peter.authnservice.domain.entity.AuthenticationType;
 import com.peter.authnservice.domain.entity.UserAuthentication;
 import com.peter.authnservice.domain.event.Event;
@@ -503,6 +504,22 @@ public class UserRegistrationIntegrationTest {
     }
 
     /**
+     * Test activating account with non-existent user
+     */
+    @Test
+    void whenActivateAccountWithNonExistentUser_thenReturns404() throws Exception {
+        UUID nonExistentUserId = UUID.randomUUID();
+        String token = jwtUtils.generateVerificationToken(nonExistentUserId);
+        UserActivationRequest request = new UserActivationRequest(token);
+
+        mockMvc.perform(post(ACTIVATION_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.message").value("User not found"));
+    }
+
+    /**
      * Test successful resend activation email for unverified user
      */
     @Test
@@ -632,5 +649,25 @@ public class UserRegistrationIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * Test resending activation with disabled account
+     */
+    @Test
+    void whenResendActivationWithDisabledAccount_thenReturns403() throws Exception {
+        AppUser user = new AppUser("John", "Doe", false);
+        user = userRepository.save(user);
+
+        UserAuthentication userAuthentication = UserAuthentication.createLocalAuth(user, testEmail, password);
+        userAuthenticationRepository.save(userAuthentication);
+
+        ActivationEmailResendRequest request = new ActivationEmailResendRequest(testEmail);
+
+        mockMvc.perform(post(RESEND_ACTIVATION_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("User account is disabled."));
     }
 }
