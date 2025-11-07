@@ -77,7 +77,7 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: codeql-results
-        path: ../results
+        path: ${{ github.workspace }}/results
         retention-days: 7
 
     - name: Add analysis summary
