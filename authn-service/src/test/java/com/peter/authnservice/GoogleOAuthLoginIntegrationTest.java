@@ -382,7 +382,7 @@ public class GoogleOAuthLoginIntegrationTest {
         mockGoogleTokenExchange();
 
         // Mock 500 error when retrieving user info
-        HttpClientErrorException serverErrorException = new HttpClientErrorException(
+        HttpServerErrorException serverErrorException = new HttpServerErrorException(
                 HttpStatus.INTERNAL_SERVER_ERROR,
                 "Internal Server Error"
         );
