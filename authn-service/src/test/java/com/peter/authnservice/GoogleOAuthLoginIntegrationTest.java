@@ -23,6 +23,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
@@ -255,6 +256,196 @@ public class GoogleOAuthLoginIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
+    }
+
+    /**
+     * Test Google OAuth with unexpected error from Google
+     */
+    @Test
+    void whenGoogleOAuthWithUnexpectedError_thenReturns500() throws Exception {
+        GoogleOAuthLoginRequest request = new GoogleOAuthLoginRequest(authorizationCode, redirectUri);
+
+        String errorResponseBody = """
+                {
+                    "error": "server_error",
+                    "error_description": "Internal server error"
+                }
+                """;
+
+        HttpServerErrorException httpException = new HttpServerErrorException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Internal Server Error",
+                errorResponseBody.getBytes(StandardCharsets.UTF_8),
+                StandardCharsets.UTF_8
+        );
+
+        when(restTemplate.exchange(
+                eq("https://oauth2.googleapis.com/token"),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
+        )).thenThrow(httpException);
+
+        mockMvc.perform(post(GOOGLE_OAUTH_LOGIN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError());
+    }
+
+    /**
+     * Test Google OAuth with JsonProcessingException during token exchange
+     */
+    @Test
+    void whenJsonProcessingExceptionInTokenExchange_thenReturns500() throws Exception {
+        GoogleOAuthLoginRequest request = new GoogleOAuthLoginRequest(authorizationCode, redirectUri);
+
+        // Mock invalid JSON response to simulate JSON parsing error
+        when(restTemplate.exchange(
+                eq("https://oauth2.googleapis.com/token"),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
+        )).thenThrow(new RuntimeException("JSON parse error"));
+
+        mockMvc.perform(post(GOOGLE_OAUTH_LOGIN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError());
+    }
+
+    /**
+     * Test Google OAuth when user info retrieval fails with 401
+     */
+    @Test
+    void whenGoogleUserInfoRetrievalFails401_thenReturns500() throws Exception {
+        GoogleOAuthLoginRequest request = new GoogleOAuthLoginRequest(authorizationCode, redirectUri);
+
+        // Mock successful token exchange
+        mockGoogleTokenExchange();
+
+        // Mock 401 error when retrieving user info
+        HttpClientErrorException unauthorizedException = new HttpClientErrorException(
+                HttpStatus.UNAUTHORIZED,
+                "Unauthorized"
+        );
+
+        when(restTemplate.exchange(
+                eq("https://www.googleapis.com/oauth2/v2/userinfo"),
+                eq(HttpMethod.GET),
+                any(HttpEntity.class),
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
+        )).thenThrow(unauthorizedException);
+
+        mockMvc.perform(post(GOOGLE_OAUTH_LOGIN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError());
+    }
+
+    /**
+     * Test Google OAuth when user info retrieval fails with 403
+     */
+    @Test
+    void whenGoogleUserInfoRetrievalFails403_thenReturns500() throws Exception {
+        GoogleOAuthLoginRequest request = new GoogleOAuthLoginRequest(authorizationCode, redirectUri);
+
+        // Mock successful token exchange
+        mockGoogleTokenExchange();
+
+        // Mock 403 error when retrieving user info
+        HttpClientErrorException forbiddenException = new HttpClientErrorException(
+                HttpStatus.FORBIDDEN,
+                "Forbidden"
+        );
+
+        when(restTemplate.exchange(
+                eq("https://www.googleapis.com/oauth2/v2/userinfo"),
+                eq(HttpMethod.GET),
+                any(HttpEntity.class),
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
+        )).thenThrow(forbiddenException);
+
+        mockMvc.perform(post(GOOGLE_OAUTH_LOGIN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError());
+    }
+
+    /**
+     * Test Google OAuth when user info retrieval fails with 500
+     */
+    @Test
+    void whenGoogleUserInfoRetrievalFails500_thenReturns500() throws Exception {
+        GoogleOAuthLoginRequest request = new GoogleOAuthLoginRequest(authorizationCode, redirectUri);
+
+        // Mock successful token exchange
+        mockGoogleTokenExchange();
+
+        // Mock 500 error when retrieving user info
+        HttpServerErrorException serverErrorException = new HttpServerErrorException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Internal Server Error"
+        );
+
+        when(restTemplate.exchange(
+                eq("https://www.googleapis.com/oauth2/v2/userinfo"),
+                eq(HttpMethod.GET),
+                any(HttpEntity.class),
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
+        )).thenThrow(serverErrorException);
+
+        mockMvc.perform(post(GOOGLE_OAUTH_LOGIN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError());
+    }
+
+    /**
+     * Test Google OAuth when user info retrieval returns invalid JSON
+     */
+    @Test
+    void whenGoogleUserInfoInvalidJson_thenReturns500() throws Exception {
+        GoogleOAuthLoginRequest request = new GoogleOAuthLoginRequest(authorizationCode, redirectUri);
+
+        // Mock successful token exchange
+        mockGoogleTokenExchange();
+
+        // Mock invalid JSON response from user info endpoint
+        when(restTemplate.exchange(
+                eq("https://www.googleapis.com/oauth2/v2/userinfo"),
+                eq(HttpMethod.GET),
+                any(HttpEntity.class),
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
+        )).thenThrow(new RuntimeException("JSON parse error"));
+
+        mockMvc.perform(post(GOOGLE_OAUTH_LOGIN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError());
+    }
+
+    /**
+     * Test Google OAuth when user info retrieval returns null response
+     */
+    @Test
+    void whenGoogleUserInfoNullResponse_thenReturns500() throws Exception {
+        GoogleOAuthLoginRequest request = new GoogleOAuthLoginRequest(authorizationCode, redirectUri);
+
+        // Mock successful token exchange
+        mockGoogleTokenExchange();
+
+        // Mock null response from user info endpoint
+        when(restTemplate.exchange(
+                eq("https://www.googleapis.com/oauth2/v2/userinfo"),
+                eq(HttpMethod.GET),
+                any(HttpEntity.class),
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
+        )).thenReturn(ResponseEntity.ok(null));
+
+        mockMvc.perform(post(GOOGLE_OAUTH_LOGIN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError());
     }
 
     // Helper methods for mocking Google API responses
