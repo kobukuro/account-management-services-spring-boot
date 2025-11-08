@@ -228,7 +228,8 @@ public class GoogleOAuthLoginIntegrationTest {
         mockMvc.perform(post(GOOGLE_OAUTH_LOGIN_API_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("The authorization code is malformed, invalid or has already been used."));
     }
 
     @Test
@@ -255,7 +256,8 @@ public class GoogleOAuthLoginIntegrationTest {
         mockMvc.perform(post(GOOGLE_OAUTH_LOGIN_API_PATH)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("The redirect URI provided does not match the ones registered."));
     }
 
     /**
