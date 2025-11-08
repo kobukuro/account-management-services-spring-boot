@@ -250,7 +250,7 @@ public class GoogleOAuthLoginIntegrationTest {
                 ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
         )).thenThrow(httpException);
 
-        String mismatchedRedirectUri = "http://localhost:3000/wrong-callback";
+        String mismatchedRedirectUri = "https://example.com/auth/wrong-callback";
         GoogleOAuthLoginRequest request = new GoogleOAuthLoginRequest(authorizationCode, mismatchedRedirectUri);
 
         mockMvc.perform(post(GOOGLE_OAUTH_LOGIN_API_PATH)
