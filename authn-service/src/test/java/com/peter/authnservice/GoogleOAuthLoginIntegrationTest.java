@@ -448,6 +448,53 @@ public class GoogleOAuthLoginIntegrationTest {
                 .andExpect(status().isInternalServerError());
     }
 
+    /**
+     * Test Google OAuth when token exchange returns null response body
+     */
+    @Test
+    void whenTokenExchangeNullResponseBody_thenReturns500() throws Exception {
+        GoogleOAuthLoginRequest request = new GoogleOAuthLoginRequest(authorizationCode, redirectUri);
+
+        // Mock token exchange with null response body
+        when(restTemplate.exchange(
+                eq("https://oauth2.googleapis.com/token"),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
+        )).thenReturn(ResponseEntity.ok(null));
+
+        mockMvc.perform(post(GOOGLE_OAUTH_LOGIN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError());
+    }
+
+    /**
+     * Test Google OAuth when token exchange response doesn't contain access_token
+     */
+    @Test
+    void whenTokenExchangeResponseMissingAccessToken_thenReturns500() throws Exception {
+        GoogleOAuthLoginRequest request = new GoogleOAuthLoginRequest(authorizationCode, redirectUri);
+
+        // Mock token exchange response without access_token
+        Map<String, Object> tokenResponse = new HashMap<>();
+        tokenResponse.put("token_type", "Bearer");
+        tokenResponse.put("expires_in", 3600);
+        // Note: access_token is intentionally missing
+
+        when(restTemplate.exchange(
+                eq("https://oauth2.googleapis.com/token"),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
+        )).thenReturn(ResponseEntity.ok(tokenResponse));
+
+        mockMvc.perform(post(GOOGLE_OAUTH_LOGIN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError());
+    }
+
     // Helper methods for mocking Google API responses
 
     private void mockGoogleTokenExchange() {
