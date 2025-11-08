@@ -229,7 +229,7 @@ public class GoogleOAuthLoginIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("The authorization code is malformed, invalid or has already been used."));
+                .andExpect(jsonPath("$.message").value("The authorization code is malformed, invalid or has already been used."));
     }
 
     @Test
@@ -257,7 +257,7 @@ public class GoogleOAuthLoginIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("The redirect URI provided does not match the ones registered."));
+                .andExpect(jsonPath("$.message").value("The redirect URI provided does not match the ones registered."));
     }
 
     /**
