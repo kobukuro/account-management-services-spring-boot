@@ -128,6 +128,15 @@ jobs:
           fail_below_threshold: false
           publish_only_summary: false
 
+      - name: Add Coverage Comment
+        uses: madrapps/jacoco-report@v1.6.1
+        with:
+          paths: |
+            ${{ github.workspace }}/authn-service/target/site/jacoco/jacoco.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          min-coverage-overall: 80
+          min-coverage-changed-files: 80
+
       - name: Clean up
         if: always()
         run: docker compose -f docker-compose-ci.yml down -v
