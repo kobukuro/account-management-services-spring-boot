@@ -545,7 +545,6 @@ public class UserResetPasswordIntegrationTest {
         user = userRepository.save(user);
 
         UserAuthentication userAuth = UserAuthentication.createLocalAuth(user, testEmail, BCrypt.hashpw(password, BCrypt.gensalt()));
-        userAuth.setEnabled(true);
         userAuthenticationRepository.save(userAuth);
 
         String token = jwtUtils.generateResetPasswordToken(user.getId());

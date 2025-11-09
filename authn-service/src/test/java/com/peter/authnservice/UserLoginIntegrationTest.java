@@ -170,7 +170,6 @@ public class UserLoginIntegrationTest {
         user = userRepository.save(user);
 
         UserAuthentication userAuth = UserAuthentication.createLocalAuth(user, email, BCrypt.hashpw(password, BCrypt.gensalt()));
-        userAuth.setEnabled(true);
         userAuthRepository.save(userAuth);
 
         UserLoginRequest loginRequest = new UserLoginRequest(email, password);
