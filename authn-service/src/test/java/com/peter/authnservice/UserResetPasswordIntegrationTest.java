@@ -535,4 +535,26 @@ public class UserResetPasswordIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isNotFound());
     }
+
+    /**
+     * Test reset password confirmation with disabled account
+     */
+    @Test
+    void whenResetPasswordConfirmWithDisabledAccount_thenReturns403() throws Exception {
+        AppUser user = new AppUser("John", "Doe", false);
+        user = userRepository.save(user);
+
+        UserAuthentication userAuth = UserAuthentication.createLocalAuth(user, testEmail, BCrypt.hashpw(password, BCrypt.gensalt()));
+        userAuth.setEnabled(true);
+        userAuthenticationRepository.save(userAuth);
+
+        String token = jwtUtils.generateResetPasswordToken(user.getId());
+        PasswordResetConfirmRequest request = new PasswordResetConfirmRequest(token, "NewPassword123!");
+
+        mockMvc.perform(post(RESET_PASSWORD_CONFIRM_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("User account is disabled."));
+    }
 }
