@@ -497,6 +497,92 @@ public class GoogleOAuthLoginIntegrationTest {
                 .andExpect(status().isInternalServerError());
     }
 
+    /**
+     * Test Google OAuth when token exchange fails with non-BAD_REQUEST HttpClientErrorException
+     */
+    @Test
+    void whenTokenExchangeFailsWithUnauthorized_thenReturns500() throws Exception {
+        GoogleOAuthLoginRequest request = new GoogleOAuthLoginRequest(authorizationCode, redirectUri);
+
+        // Mock HttpClientErrorException with UNAUTHORIZED status
+        HttpClientErrorException unauthorizedException = new HttpClientErrorException(
+                HttpStatus.UNAUTHORIZED,
+                "Unauthorized"
+        );
+
+        when(restTemplate.exchange(
+                eq("https://oauth2.googleapis.com/token"),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
+        )).thenThrow(unauthorizedException);
+
+        mockMvc.perform(post(GOOGLE_OAUTH_LOGIN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError());
+    }
+
+    /**
+     * Test Google OAuth when token exchange fails with BAD_REQUEST but no error field in response
+     */
+    @Test
+    void whenTokenExchangeFailsWithBadRequestButNoErrorField_thenReturns500() throws Exception {
+        GoogleOAuthLoginRequest request = new GoogleOAuthLoginRequest(authorizationCode, redirectUri);
+
+        // Mock BAD_REQUEST response without "error" field in body
+        String errorResponseBody = "{\"message\":\"Something went wrong\"}";
+
+        HttpClientErrorException badRequestException = new HttpClientErrorException(
+                HttpStatus.BAD_REQUEST,
+                "Bad Request",
+                errorResponseBody.getBytes(),
+                StandardCharsets.UTF_8
+        );
+
+        when(restTemplate.exchange(
+                eq("https://oauth2.googleapis.com/token"),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
+        )).thenThrow(badRequestException);
+
+        mockMvc.perform(post(GOOGLE_OAUTH_LOGIN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError());
+    }
+
+    /**
+     * Test Google OAuth when token exchange fails with an unknown OAuth error
+     */
+    @Test
+    void whenTokenExchangeFailsWithUnknownOAuthError_thenReturns500() throws Exception {
+        GoogleOAuthLoginRequest request = new GoogleOAuthLoginRequest(authorizationCode, redirectUri);
+
+        // Mock BAD_REQUEST response with an error field that's neither invalid_grant nor redirect_uri_mismatch
+        String errorResponseBody = "{\"error\":\"unsupported_grant_type\"}";
+
+        HttpClientErrorException badRequestException = new HttpClientErrorException(
+                HttpStatus.BAD_REQUEST,
+                "Bad Request",
+                errorResponseBody.getBytes(),
+                StandardCharsets.UTF_8
+        );
+
+        when(restTemplate.exchange(
+                eq("https://oauth2.googleapis.com/token"),
+                eq(HttpMethod.POST),
+                any(HttpEntity.class),
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
+        )).thenThrow(badRequestException);
+
+        mockMvc.perform(post(GOOGLE_OAUTH_LOGIN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isInternalServerError());
+    }
+
     // Helper methods for mocking Google API responses
 
     private void mockGoogleTokenExchange() {

@@ -596,4 +596,28 @@ public class PasswordChangeIntegrationTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden());
     }
+
+    /**
+     * Test password change for user with only OAuth authentication (no LOCAL auth)
+     */
+    @Test
+    void whenUserHasOnlyOAuthAuth_thenChangePasswordFails() throws Exception {
+        // Create user with only Google OAuth authentication
+        AppUser user = new AppUser(firstName, lastName, true);
+        AppUser savedUser = userRepository.save(user);
+
+        UserAuthentication googleAuth = UserAuthentication.createOAuthAuth(
+                savedUser, AuthenticationType.GOOGLE, "google_user_123", testEmail);
+        userAuthenticationRepository.save(googleAuth);
+
+        String token = jwtUtils.generateAccessToken(savedUser.getId());
+
+        PasswordChangeRequest request = new PasswordChangeRequest(currentPassword, newPassword);
+
+        mockMvc.perform(post(CHANGE_PASSWORD_API_PATH)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNotFound());
+    }
 }
