@@ -162,6 +162,26 @@ public class UserLoginIntegrationTest {
     }
 
     /**
+     * Test login with disabled account
+     */
+    @Test
+    void whenLoginWithDisabledAccount_thenReturns403() throws Exception {
+        AppUser user = new AppUser("John", "Doe", false);
+        user = userRepository.save(user);
+
+        UserAuthentication userAuth = UserAuthentication.createLocalAuth(user, email, BCrypt.hashpw(password, BCrypt.gensalt()));
+        userAuthRepository.save(userAuth);
+
+        UserLoginRequest loginRequest = new UserLoginRequest(email, password);
+
+        mockMvc.perform(post(LOGIN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.message").value("User account is disabled."));
+    }
+
+    /**
      * Test login with empty email
      */
     @Test
