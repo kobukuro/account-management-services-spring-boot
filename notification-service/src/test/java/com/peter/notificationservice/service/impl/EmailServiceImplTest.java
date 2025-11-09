@@ -50,6 +50,18 @@ class EmailServiceImplTest {
         mimeMessage = new MimeMessage(session);
     }
 
+    /**
+     * Helper method to set up common mock behavior for email sending tests.
+     * This reduces code duplication across multiple test methods.
+     *
+     * @param templateName the name of the template to process
+     * @param processedHtml the HTML content to return from template processing
+     */
+    private void setupEmailMocks(String templateName, String processedHtml) {
+        when(emailSender.createMimeMessage()).thenReturn(mimeMessage);
+        when(templateEngine.process(eq(templateName), any(Context.class))).thenReturn(processedHtml);
+    }
+
     @Test
     void shouldSendHtmlEmailSuccessfully() throws Exception {
         // Given
@@ -62,8 +74,7 @@ class EmailServiceImplTest {
         );
         String processedHtml = "<html><body>Hello John Doe</body></html>";
 
-        when(emailSender.createMimeMessage()).thenReturn(mimeMessage);
-        when(templateEngine.process(eq(templateName), any(Context.class))).thenReturn(processedHtml);
+        setupEmailMocks(templateName, processedHtml);
 
         // When
         emailService.sendHtmlEmail(toEmail, subject, templateName, templateModel);
@@ -100,8 +111,7 @@ class EmailServiceImplTest {
         );
         String processedHtml = "<html><body>Verification email content</body></html>";
 
-        when(emailSender.createMimeMessage()).thenReturn(mimeMessage);
-        when(templateEngine.process(eq(templateName), any(Context.class))).thenReturn(processedHtml);
+        setupEmailMocks(templateName, processedHtml);
 
         // When
         emailService.sendHtmlEmail(toEmail, subject, templateName, templateModel);
@@ -152,8 +162,7 @@ class EmailServiceImplTest {
         Map<String, Object> templateModel = Map.of("key", "value");
         String processedHtml = "<html><body>Test content</body></html>";
 
-        when(emailSender.createMimeMessage()).thenReturn(mimeMessage);
-        when(templateEngine.process(eq(templateName), any(Context.class))).thenReturn(processedHtml);
+        setupEmailMocks(templateName, processedHtml);
         doThrow(new RuntimeException("SMTP server connection failed"))
                 .when(emailSender).send(any(MimeMessage.class));
 
@@ -177,8 +186,7 @@ class EmailServiceImplTest {
         Map<String, Object> templateModel = Map.of();
         String processedHtml = "<html><body>Simple email</body></html>";
 
-        when(emailSender.createMimeMessage()).thenReturn(mimeMessage);
-        when(templateEngine.process(eq(templateName), any(Context.class))).thenReturn(processedHtml);
+        setupEmailMocks(templateName, processedHtml);
 
         // When
         emailService.sendHtmlEmail(toEmail, subject, templateName, templateModel);
@@ -208,8 +216,7 @@ class EmailServiceImplTest {
         );
         String processedHtml = "<html><body>Reset password email</body></html>";
 
-        when(emailSender.createMimeMessage()).thenReturn(mimeMessage);
-        when(templateEngine.process(eq(templateName), any(Context.class))).thenReturn(processedHtml);
+        setupEmailMocks(templateName, processedHtml);
 
         // When
         emailService.sendHtmlEmail(toEmail, subject, templateName, templateModel);
@@ -228,8 +235,7 @@ class EmailServiceImplTest {
         Map<String, Object> templateModel = Map.of();
         String processedHtml = "<html><body>Test</body></html>";
 
-        when(emailSender.createMimeMessage()).thenReturn(mimeMessage);
-        when(templateEngine.process(eq(templateName), any(Context.class))).thenReturn(processedHtml);
+        setupEmailMocks(templateName, processedHtml);
 
         // When
         emailService.sendHtmlEmail(toEmail, subject, templateName, templateModel);
@@ -254,8 +260,7 @@ class EmailServiceImplTest {
         Map<String, Object> templateModel = Map.of("name", "User");
         String processedHtml = "<html><body>Welcome</body></html>";
 
-        when(emailSender.createMimeMessage()).thenReturn(mimeMessage);
-        when(templateEngine.process(eq(templateName), any(Context.class))).thenReturn(processedHtml);
+        setupEmailMocks(templateName, processedHtml);
 
         // When
         emailService.sendHtmlEmail(toEmail, subject, templateName, templateModel);
@@ -274,8 +279,7 @@ class EmailServiceImplTest {
         Map<String, Object> templateModel = Map.of();
         String processedHtml = "<html><body>Test with UTF-8: 中文</body></html>";
 
-        when(emailSender.createMimeMessage()).thenReturn(mimeMessage);
-        when(templateEngine.process(eq(templateName), any(Context.class))).thenReturn(processedHtml);
+        setupEmailMocks(templateName, processedHtml);
 
         // When
         emailService.sendHtmlEmail(toEmail, subject, templateName, templateModel);
