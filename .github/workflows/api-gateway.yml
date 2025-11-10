@@ -110,6 +110,9 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./api-gateway/target/site/jacoco/jacoco.xml
+          flags: api-gateway
+          name: api-gateway-coverage
 
       - name: JaCoCo Code Coverage Report
         id: jacoco_reporter
