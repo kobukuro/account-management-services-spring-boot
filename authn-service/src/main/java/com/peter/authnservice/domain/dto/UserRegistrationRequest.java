@@ -13,7 +13,7 @@ public record UserRegistrationRequest(
                 example = "John"
         )
         @NotEmpty(message = "first name field cannot be empty")
-        @Size(min = 1, max = 100, message = "First name must be between 1 and 100 characters")
+        @Size(max = 100, message = "First name must be at most 100 characters")
         String firstName,
 
         @Schema(
@@ -21,7 +21,7 @@ public record UserRegistrationRequest(
                 example = "Doe"
         )
         @NotEmpty(message = "last name field cannot be empty")
-        @Size(min = 1, max = 100, message = "Last name must be between 1 and 100 characters")
+        @Size(max = 100, message = "Last name must be at most 100 characters")
         String lastName,
 
         @Schema(
