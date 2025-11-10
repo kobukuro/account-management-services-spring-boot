@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 
 
 public record UserRegistrationRequest(
@@ -12,6 +13,7 @@ public record UserRegistrationRequest(
                 example = "John"
         )
         @NotEmpty(message = "first name field cannot be empty")
+        @Size(max = 100, message = "First name must be at most 100 characters")
         String firstName,
 
         @Schema(
@@ -19,6 +21,7 @@ public record UserRegistrationRequest(
                 example = "Doe"
         )
         @NotEmpty(message = "last name field cannot be empty")
+        @Size(max = 100, message = "Last name must be at most 100 characters")
         String lastName,
 
         @Schema(
