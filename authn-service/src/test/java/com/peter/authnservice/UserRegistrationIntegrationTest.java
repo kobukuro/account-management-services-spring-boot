@@ -424,6 +424,92 @@ public class UserRegistrationIntegrationTest {
     }
 
     /**
+     * Test first name exceeding maximum length (> 100 characters)
+     */
+    @Test
+    void whenFirstNameTooLong_thenReturns400() throws Exception {
+        String tooLongFirstName = "A".repeat(101);
+        UserRegistrationRequest invalidRequest = new UserRegistrationRequest(
+                tooLongFirstName,
+                lastName,
+                testEmail,
+                password
+        );
+
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+
+        assertEquals(0, userRepository.count());
+    }
+
+    /**
+     * Test first name at maximum allowed length (100 characters)
+     */
+    @Test
+    void whenFirstNameAtMaxLength_thenReturns201() throws Exception {
+        String maxLengthFirstName = "A".repeat(100);
+        UserRegistrationRequest validRequest = new UserRegistrationRequest(
+                maxLengthFirstName,
+                lastName,
+                testEmail,
+                password
+        );
+
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email").value(testEmail));
+
+        assertEquals(1, userRepository.count());
+    }
+
+    /**
+     * Test last name exceeding maximum length (> 100 characters)
+     */
+    @Test
+    void whenLastNameTooLong_thenReturns400() throws Exception {
+        String tooLongLastName = "B".repeat(101);
+        UserRegistrationRequest invalidRequest = new UserRegistrationRequest(
+                firstName,
+                tooLongLastName,
+                testEmail,
+                password
+        );
+
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest());
+
+        assertEquals(0, userRepository.count());
+    }
+
+    /**
+     * Test last name at maximum allowed length (100 characters)
+     */
+    @Test
+    void whenLastNameAtMaxLength_thenReturns201() throws Exception {
+        String maxLengthLastName = "B".repeat(100);
+        UserRegistrationRequest validRequest = new UserRegistrationRequest(
+                firstName,
+                maxLengthLastName,
+                testEmail,
+                password
+        );
+
+        mockMvc.perform(post(REGISTER_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(validRequest)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.email").value(testEmail));
+
+        assertEquals(1, userRepository.count());
+    }
+
+    /**
      * Test successful account activation
      */
     @Test
