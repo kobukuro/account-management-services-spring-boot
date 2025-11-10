@@ -27,6 +27,7 @@ public class EmailServiceImpl implements EmailService {
         this.templateEngine = templateEngine;
     }
 
+    @Override
     public void sendHtmlEmail(String toEmail, String subject, String templateName, Map<String, Object> templateModel) {
         try {
             // Process HTML template

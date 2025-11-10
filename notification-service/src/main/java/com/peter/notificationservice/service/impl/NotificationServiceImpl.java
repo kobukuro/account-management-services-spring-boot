@@ -15,6 +15,7 @@ public class NotificationServiceImpl implements NotificationService {
         this.notificationStrategies = notificationStrategies;
     }
 
+    @Override
     public void processNotification(Event event) {
         // Iterate through the list of notification strategies and find the ones that can handle the event
         notificationStrategies.stream()
