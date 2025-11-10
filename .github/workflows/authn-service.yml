@@ -114,6 +114,9 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./authn-service/target/site/jacoco/jacoco.xml
+          flags: authn-service
+          name: authn-service-coverage
 
       - name: JaCoCo Code Coverage Report
         id: jacoco_reporter
