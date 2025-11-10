@@ -11,6 +11,10 @@ on:
       - 'api-gateway/**'
       - '.github/workflows/api-gateway.yml'
 
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
 
 jobs:
   build:
@@ -101,6 +105,36 @@ jobs:
           else
             echo "⚠️ Coverage report not found" >> $GITHUB_STEP_SUMMARY
           fi
+
+      - name: Upload coverage reports to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./api-gateway/target/site/jacoco/jacoco.xml
+          flags: api-gateway
+          name: api-gateway-coverage
+
+      - name: JaCoCo Code Coverage Report
+        id: jacoco_reporter
+        uses: PavanMudigonda/jacoco-reporter@v4.9
+        with:
+          coverage_results_path: api-gateway/target/site/jacoco/jacoco.xml
+          coverage_report_name: Coverage
+          coverage_report_title: JaCoCo Coverage Report
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          skip_check_run: false
+          minimum_coverage: 80
+          fail_below_threshold: false
+          publish_only_summary: false
+
+      - name: Add Coverage Comment
+        uses: madrapps/jacoco-report@v1.6.1
+        with:
+          paths: |
+            ${{ github.workspace }}/api-gateway/target/site/jacoco/jacoco.xml
+          token: ${{ secrets.GITHUB_TOKEN }}
+          min-coverage-overall: 80
+          min-coverage-changed-files: 80
 
       - name: Stop Docker Compose
         if: always()
