@@ -8,13 +8,13 @@ public record UpdateProfileRequest(
                 description = "User's first name",
                 example = "John"
         )
-        @Size(min = 1, max = 100, message = "First name must be between 1 and 100 characters")
+        @Size(max = 100, message = "First name must not exceed 100 characters")
         String firstName,
 
         @Schema(
                 description = "User's last name",
                 example = "Doe"
         )
-        @Size(min = 1, max = 100, message = "Last name must be between 1 and 100 characters")
+        @Size(max = 100, message = "Last name must not exceed 100 characters")
         String lastName) {
 }
