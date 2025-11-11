@@ -413,4 +413,32 @@ public class UserServiceImpl implements UserService {
             throw new OAuthException("OAuth user info retrieval failed: " + e.getMessage());
         }
     }
+
+    @Override
+    public AppUser updateProfile(UUID userId, String firstName, String lastName) {
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (!user.getEnabled()) {
+            throw new UserAccountDisabledException("User account is disabled.");
+        }
+
+        boolean updated = false;
+
+        if (firstName != null && !firstName.isBlank()) {
+            user.setFirstName(firstName);
+            updated = true;
+        }
+
+        if (lastName != null && !lastName.isBlank()) {
+            user.setLastName(lastName);
+            updated = true;
+        }
+
+        if (!updated) {
+            throw new IllegalArgumentException("At least one field (firstName or lastName) must be provided");
+        }
+
+        return userRepository.save(user);
+    }
 }
