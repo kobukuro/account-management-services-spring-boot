@@ -1,6 +1,9 @@
 package com.peter.authnservice.service;
 
+import com.peter.authnservice.domain.entity.AppUser;
 import com.peter.authnservice.exception.TokenNotValidException;
+import com.peter.authnservice.exception.UserAccountDisabledException;
+import com.peter.authnservice.exception.UserNotFoundException;
 import com.peter.authnservice.repository.UserRepository;
 import com.peter.authnservice.service.impl.UserServiceImpl;
 import org.junit.jupiter.api.Test;
@@ -22,7 +25,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
+
 
 @ExtendWith(MockitoExtension.class)
 public class UserServiceImplTest {
@@ -55,13 +59,13 @@ public class UserServiceImplTest {
     void whenTokenExchangeReturnsNon2xxWithoutException_thenThrowsOAuthException() {
         // Mock a non-2xx response (e.g., 3xx redirect) that doesn't throw exception
         ResponseEntity<Map<String, Object>> redirectResponse =
-            ResponseEntity.status(HttpStatus.FOUND).body(null);
+                ResponseEntity.status(HttpStatus.FOUND).body(null);
 
         when(restTemplate.exchange(
-            eq("https://oauth2.googleapis.com/token"),
-            eq(HttpMethod.POST),
-            any(),
-            ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
+                eq("https://oauth2.googleapis.com/token"),
+                eq(HttpMethod.POST),
+                any(),
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
         )).thenReturn(redirectResponse);
 
         assertThrows(Exception.class, () -> userService.googleOAuthLogin("auth_code", "redirect_uri"));
@@ -76,21 +80,21 @@ public class UserServiceImplTest {
         Map<String, Object> tokenResponse = new HashMap<>();
         tokenResponse.put("access_token", "test_token");
         when(restTemplate.exchange(
-            eq("https://oauth2.googleapis.com/token"),
-            eq(HttpMethod.POST),
-            any(),
-            ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
+                eq("https://oauth2.googleapis.com/token"),
+                eq(HttpMethod.POST),
+                any(),
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
         )).thenReturn(ResponseEntity.ok(tokenResponse));
 
         // Mock getUserInfo returning 2xx but null body
         ResponseEntity<Map<String, Object>> nullBodyResponse =
-            ResponseEntity.ok(null);
+                ResponseEntity.ok(null);
 
         when(restTemplate.exchange(
-            eq("https://www.googleapis.com/oauth2/v2/userinfo"),
-            eq(HttpMethod.GET),
-            any(),
-            ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
+                eq("https://www.googleapis.com/oauth2/v2/userinfo"),
+                eq(HttpMethod.GET),
+                any(),
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
         )).thenReturn(nullBodyResponse);
 
         assertThrows(Exception.class, () -> userService.googleOAuthLogin("auth_code", "redirect_uri"));
@@ -105,23 +109,125 @@ public class UserServiceImplTest {
         Map<String, Object> tokenResponse = new HashMap<>();
         tokenResponse.put("access_token", "test_token");
         when(restTemplate.exchange(
-            eq("https://oauth2.googleapis.com/token"),
-            eq(HttpMethod.POST),
-            any(),
-            ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
+                eq("https://oauth2.googleapis.com/token"),
+                eq(HttpMethod.POST),
+                any(),
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
         )).thenReturn(ResponseEntity.ok(tokenResponse));
 
         // Mock getUserInfo returning non-2xx status (e.g., 3xx redirect) without throwing exception
         ResponseEntity<Map<String, Object>> redirectResponse =
-            ResponseEntity.status(HttpStatus.FOUND).body(null);
+                ResponseEntity.status(HttpStatus.FOUND).body(null);
 
         when(restTemplate.exchange(
-            eq("https://www.googleapis.com/oauth2/v2/userinfo"),
-            eq(HttpMethod.GET),
-            any(),
-            ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
+                eq("https://www.googleapis.com/oauth2/v2/userinfo"),
+                eq(HttpMethod.GET),
+                any(),
+                ArgumentMatchers.<ParameterizedTypeReference<Map<String, Object>>>any()
         )).thenReturn(redirectResponse);
 
         assertThrows(Exception.class, () -> userService.googleOAuthLogin("auth_code", "redirect_uri"));
+    }
+
+    /**
+     * Test updateProfile when user is not found
+     */
+    @Test
+    void whenUpdateProfileWithNonExistentUser_thenThrowsUserNotFoundException() {
+        UUID userId = UUID.randomUUID();
+        when(userRepository.findById(userId)).thenReturn(Optional.empty());
+
+        assertThrows(UserNotFoundException.class,
+                () -> userService.updateProfile(userId, "NewFirstName", "NewLastName"));
+    }
+
+    /**
+     * Test updateProfile when user account is disabled
+     */
+    @Test
+    void whenUpdateProfileWithDisabledAccount_thenThrowsUserAccountDisabledException() {
+        UUID userId = UUID.randomUUID();
+        AppUser disabledUser = new AppUser(userId, "John", "Doe", false);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(disabledUser));
+
+        assertThrows(UserAccountDisabledException.class,
+                () -> userService.updateProfile(userId, "NewFirstName", "NewLastName"));
+    }
+
+    /**
+     * Test updateProfile when no fields are provided
+     */
+    @Test
+    void whenUpdateProfileWithNoFields_thenThrowsIllegalArgumentException() {
+        UUID userId = UUID.randomUUID();
+        AppUser user = new AppUser(userId, "John", "Doe", true);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> userService.updateProfile(userId, null, null));
+    }
+
+    /**
+     * Test updateProfile when only blank fields are provided
+     */
+    @Test
+    void whenUpdateProfileWithOnlyBlankFields_thenThrowsIllegalArgumentException() {
+        UUID userId = UUID.randomUUID();
+        AppUser user = new AppUser(userId, "John", "Doe", true);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> userService.updateProfile(userId, "   ", ""));
+    }
+
+    /**
+     * Test updateProfile successfully updates both firstName and lastName
+     */
+    @Test
+    void whenUpdateProfileWithBothFields_thenSuccessfullyUpdates() {
+        UUID userId = UUID.randomUUID();
+        AppUser user = new AppUser(userId, "John", "Doe", true);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(AppUser.class))).thenReturn(user);
+
+        AppUser updatedUser = userService.updateProfile(userId, "Jane", "Smith");
+
+        assertEquals("Jane", updatedUser.getFirstName());
+        assertEquals("Smith", updatedUser.getLastName());
+        verify(userRepository, times(1)).save(user);
+    }
+
+    /**
+     * Test updateProfile successfully updates only firstName
+     */
+    @Test
+    void whenUpdateProfileWithOnlyFirstName_thenSuccessfullyUpdates() {
+        UUID userId = UUID.randomUUID();
+        AppUser user = new AppUser(userId, "John", "Doe", true);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(AppUser.class))).thenReturn(user);
+
+        AppUser updatedUser = userService.updateProfile(userId, "Jane", null);
+
+        assertEquals("Jane", updatedUser.getFirstName());
+        assertEquals("Doe", updatedUser.getLastName()); // lastName unchanged
+        verify(userRepository, times(1)).save(user);
+    }
+
+    /**
+     * Test updateProfile successfully updates only lastName
+     */
+    @Test
+    void whenUpdateProfileWithOnlyLastName_thenSuccessfullyUpdates() {
+        UUID userId = UUID.randomUUID();
+        AppUser user = new AppUser(userId, "John", "Doe", true);
+        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
+        when(userRepository.save(any(AppUser.class))).thenReturn(user);
+
+        AppUser updatedUser = userService.updateProfile(userId, null, "Smith");
+
+        assertEquals("John", updatedUser.getFirstName()); // firstName unchanged
+        assertEquals("Smith", updatedUser.getLastName());
+        verify(userRepository, times(1)).save(user);
     }
 }

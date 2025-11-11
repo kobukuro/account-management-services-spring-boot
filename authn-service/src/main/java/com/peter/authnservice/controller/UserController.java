@@ -8,16 +8,15 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
 
 import java.util.UUID;
 
@@ -215,7 +214,8 @@ public class UserController {
 
     @Operation(
             summary = "Change password",
-            description = "Change the password for the authenticated user. The current password and new password must be provided."
+            description = "Change the password for the authenticated user. The current password and new password must be provided.",
+            security = @SecurityRequirement(name = "bearerAuth")
     )
     @ApiResponses(value = {
             @ApiResponse(
@@ -286,6 +286,55 @@ public class UserController {
     public ResponseEntity<UserLoginResponse> googleOAuthLogin(@Valid @RequestBody GoogleOAuthLoginRequest request) {
         TokenPair tokenPair = userService.googleOAuthLogin(request.authorizationCode(), request.redirectUri());
         UserLoginResponse response = new UserLoginResponse(tokenPair.accessToken(), tokenPair.refreshToken());
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Update user profile",
+            description = "Update the authenticated user's profile information. You can update firstName, lastName, or both.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Profile updated successfully",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = UpdateProfileResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid request parameters or no fields provided",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Invalid or expired authentication",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "User account is disabled",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "User not found",
+                    content = @Content
+            )
+    })
+    @PatchMapping("/me")
+    public ResponseEntity<UpdateProfileResponse> updateProfile(Authentication authentication,
+                                                                @Valid @RequestBody UpdateProfileRequest request) {
+        UUID userId = authentication.getName() != null ? UUID.fromString(authentication.getName()) : null;
+        AppUser updatedUser = userService.updateProfile(userId, request.firstName(), request.lastName());
+        UpdateProfileResponse response = new UpdateProfileResponse(
+                updatedUser.getId(),
+                updatedUser.getFirstName(),
+                updatedUser.getLastName(),
+                updatedUser.getLastUpdatedAt()
+        );
         return ResponseEntity.ok(response);
     }
 }

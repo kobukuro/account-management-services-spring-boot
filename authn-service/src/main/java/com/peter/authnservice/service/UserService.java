@@ -23,4 +23,6 @@ public interface UserService {
     String refreshToken(String refreshToken);
 
     TokenPair googleOAuthLogin(String authorizationCode, String redirectUri);
+
+    AppUser updateProfile(UUID userId, String firstName, String lastName);
 }
