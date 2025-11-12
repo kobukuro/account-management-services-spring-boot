@@ -3,6 +3,7 @@ package com.peter.authnservice.service.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.peter.authnservice.domain.dto.ProcessedImage;
 import com.peter.authnservice.domain.dto.TokenPair;
 import com.peter.authnservice.domain.dto.oauth.GoogleUserInfo;
 import com.peter.authnservice.domain.entity.AppUser;
@@ -12,8 +13,12 @@ import com.peter.authnservice.domain.event.*;
 import com.peter.authnservice.exception.*;
 import com.peter.authnservice.repository.UserAuthenticationRepository;
 import com.peter.authnservice.repository.UserRepository;
+import com.peter.authnservice.service.ImageProcessingService;
 import com.peter.authnservice.service.UserService;
+import com.peter.authnservice.service.FileStorageService;
 import com.peter.authnservice.util.JwtUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
@@ -25,7 +30,9 @@ import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
@@ -38,9 +45,12 @@ import static com.peter.authnservice.domain.entity.UserAuthentication.createOAut
 @Service
 @Transactional // Utilize Spring's transaction management to roll back the transaction if an exception occurs
 public class UserServiceImpl implements UserService {
+    private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
     private final UserRepository userRepository;
     private final UserAuthenticationRepository userAuthenticationRepository;
     private final JwtUtils jwtUtils;
+    private final FileStorageService fileStorageService;
+    private final ImageProcessingService imageProcessingService;
     @Value("${app-name}")
     private String appName;
     @Value("${jwt.verification.expiration}")
@@ -61,12 +71,16 @@ public class UserServiceImpl implements UserService {
                            UserAuthenticationRepository userAuthenticationRepository,
                            JwtUtils jwtUtils,
                            KafkaTemplate<String, Event> kafkaTemplate,
-                           RestTemplate restTemplate) {
+                           RestTemplate restTemplate,
+                           FileStorageService fileStorageService,
+                           ImageProcessingService imageProcessingService) {
         this.userRepository = userRepository;
         this.userAuthenticationRepository = userAuthenticationRepository;
         this.jwtUtils = jwtUtils;
         this.kafkaTemplate = kafkaTemplate;
         this.restTemplate = restTemplate;
+        this.fileStorageService = fileStorageService;
+        this.imageProcessingService = imageProcessingService;
     }
 
     @Override
@@ -440,5 +454,74 @@ public class UserServiceImpl implements UserService {
         }
 
         return userRepository.save(user);
+    }
+
+    @Override
+    public AppUser uploadProfilePicture(UUID userId, MultipartFile file) {
+        // Retrieve user and verify account is enabled
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (!user.getEnabled()) {
+            throw new UserAccountDisabledException("User account is disabled.");
+        }
+
+        // Check if user only has LOCAL authentication and it's not verified
+        var userAuths = userAuthenticationRepository.findAllByUserId(userId);
+        boolean hasOnlyLocalAuth = userAuths.size() == 1 &&
+                                    userAuths.getFirst().getType() == AuthenticationType.LOCAL;
+
+        if (hasOnlyLocalAuth && !userAuths.getFirst().getEnabled()) {
+            throw new EmailNotVerifiedException("Email verification required to upload profile picture.");
+        }
+
+        try {
+            // Validate file
+            imageProcessingService.validateFileSize(file);
+            imageProcessingService.validateContentType(file);
+            imageProcessingService.validateFileExtension(file.getOriginalFilename());
+            imageProcessingService.validateMagicNumber(file);
+
+            // Process image (resize, compress, convert)
+            ProcessedImage processedImage = imageProcessingService.processImage(file);
+
+            // Generate unique filename with user ID
+            String fileExtension = ".png"; // We're converting to PNG
+            String fileName = UUID.randomUUID() + fileExtension;
+            String s3Key = String.format("profile-pictures/%s/%s", userId, fileName);
+
+            // Delete old profile picture if exists
+            if (user.getProfilePictureUrl() != null && !user.getProfilePictureUrl().isEmpty()) {
+                String oldKey = fileStorageService.extractKeyFromUrl(user.getProfilePictureUrl());
+                if (oldKey != null) {
+                    try {
+                        fileStorageService.deleteFile(oldKey);
+                    } catch (Exception e) {
+                        // Log but don't fail if old file deletion fails
+                        logger.warn("Failed to delete old profile picture for user {}: {}",
+                                userId, e.getMessage(), e);
+                    }
+                }
+            }
+
+            // Upload to S3
+            String profilePictureUrl = fileStorageService.uploadFile(
+                    s3Key,
+                    processedImage.inputStream(),
+                    processedImage.contentType(),
+                    processedImage.size()
+            );
+
+            // Update user entity
+            user.setProfilePictureUrl(profilePictureUrl);
+            return userRepository.save(user);
+
+        } catch (IOException e) {
+            throw new FileUploadException("Failed to process image file", e);
+        } catch (IllegalArgumentException e) {
+            throw e; // Re-throw validation exceptions
+        } catch (Exception e) {
+            throw new FileUploadException("Failed to upload profile picture: " + e.getMessage(), e);
+        }
     }
 }

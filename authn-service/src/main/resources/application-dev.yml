@@ -49,3 +49,17 @@ google:
     client-secret: ${GOOGLE_OAUTH2_CLIENT_SECRET}
 
 trusted-proxy-ips: ${TRUSTED_PROXY_IPS:127.0.0.1,::1}
+
+aws:
+  s3:
+    access-key-id: ${AWS_ACCESS_KEY_ID}
+    secret-access-key: ${AWS_SECRET_ACCESS_KEY}
+    region: ${AWS_S3_REGION}
+    bucket-name: ${AWS_S3_BUCKET_NAME}
+
+file:
+  upload:
+    max-size-mb: ${FILE_UPLOAD_MAX_SIZE_MB:5}
+    profile-picture:
+      max-width: ${FILE_UPLOAD_PROFILE_PICTURE_MAX_WIDTH:400}
+      max-height: ${FILE_UPLOAD_PROFILE_PICTURE_MAX_HEIGHT:400}

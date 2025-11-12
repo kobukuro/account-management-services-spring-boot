@@ -13,9 +13,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 
 import java.util.UUID;
@@ -334,6 +336,58 @@ public class UserController {
                 updatedUser.getFirstName(),
                 updatedUser.getLastName(),
                 updatedUser.getLastUpdatedAt()
+        );
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(
+            summary = "Upload profile picture",
+            description = "Upload or update the authenticated user's profile picture. Only JPEG, PNG, and WebP images are allowed. Maximum file size is 5MB. The image will be automatically resized and optimized.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Profile picture uploaded successfully",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = ProfilePictureUploadResponse.class)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Invalid file (wrong type, too large, or corrupted)",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "Invalid or expired authentication",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "User account is disabled",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "User not found",
+                    content = @Content
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "Failed to upload profile picture",
+                    content = @Content
+            )
+    })
+    @PostMapping(value = "/me/profile-picture", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ProfilePictureUploadResponse> uploadProfilePicture(
+            Authentication authentication,
+            @RequestParam("file") MultipartFile file) {
+        UUID userId = authentication.getName() != null ? UUID.fromString(authentication.getName()) : null;
+        AppUser updatedUser = userService.uploadProfilePicture(userId, file);
+        ProfilePictureUploadResponse response = new ProfilePictureUploadResponse(
+                updatedUser.getProfilePictureUrl()
         );
         return ResponseEntity.ok(response);
     }

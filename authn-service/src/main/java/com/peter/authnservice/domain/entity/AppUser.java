@@ -22,6 +22,7 @@ public class AppUser implements UserDetails {
     private UUID id;
     private String firstName;
     private String lastName;
+    private String profilePictureUrl;
 
     @Column(nullable = false)
     private Boolean enabled = false;
