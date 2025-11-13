@@ -140,7 +140,7 @@ public class ImageProcessingServiceImpl implements ImageProcessingService {
             processedImage = Scalr.resize(
                     originalImage,
                     Scalr.Method.QUALITY,
-                    Scalr.Mode.FIT_TO_WIDTH,
+                    Scalr.Mode.AUTOMATIC,
                     maxWidth,
                     maxHeight,
                     Scalr.OP_ANTIALIAS
