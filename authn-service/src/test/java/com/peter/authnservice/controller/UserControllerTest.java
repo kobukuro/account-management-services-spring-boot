@@ -10,6 +10,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.ZonedDateTime;
 
@@ -63,5 +64,28 @@ public class UserControllerTest {
 
         // Verify that null is passed as userId
         verify(userService).updateProfile(isNull(), eq("NewFirstName"), eq("NewLastName"));
+    }
+
+    /**
+     * Test uploadProfilePicture when authentication.getName() returns null
+     * This covers the branch where userId becomes null in uploadProfilePicture (line 387)
+     */
+    @Test
+    void whenAuthenticationNameIsNullInUploadProfilePicture_thenPassesNullToService() {
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getName()).thenReturn(null);
+
+        MultipartFile mockFile = mock(MultipartFile.class);
+
+        // Mock the service to return a valid AppUser
+        AppUser mockUser = new AppUser("John", "Doe", true);
+        mockUser.setProfilePictureUrl("https://example.com/profile.jpg");
+        when(userService.uploadProfilePicture(isNull(), eq(mockFile)))
+                .thenReturn(mockUser);
+
+        userController.uploadProfilePicture(authentication, mockFile);
+
+        // Verify that null is passed as userId
+        verify(userService).uploadProfilePicture(isNull(), eq(mockFile));
     }
 }
