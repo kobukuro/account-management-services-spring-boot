@@ -147,7 +147,6 @@ public class ImageProcessingServiceImpl implements ImageProcessingService {
             );
         }
 
-        // Convert to WebP format for optimal storage (or keep as JPEG for compatibility)
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
         ImageIO.write(processedImage, "png", outputStream); // Using PNG for compatibility
         byte[] imageBytes = outputStream.toByteArray();
