@@ -286,7 +286,7 @@ public class UserServiceImplTest {
         AppUser user = new AppUser(userId, "John", "Doe", true);
         MultipartFile file = mock(MultipartFile.class);
 
-        UserAuthentication localAuth = UserAuthentication.createLocalAuth(user, "john@example.com", "Password123!");
+        UserAuthentication localAuth = UserAuthentication.createLocalAuth(user, "john@example.com", "hashedPassword");
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userAuthenticationRepository.findAllByUserId(userId)).thenReturn(List.of(localAuth));
