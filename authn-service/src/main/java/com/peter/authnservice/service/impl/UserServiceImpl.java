@@ -25,6 +25,7 @@ import org.springframework.http.*;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -457,23 +458,10 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public AppUser uploadProfilePicture(UUID userId, MultipartFile file) {
-        // Retrieve user and verify account is enabled
-        AppUser user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException("User not found"));
-
-        if (!user.getEnabled()) {
-            throw new UserAccountDisabledException("User account is disabled.");
-        }
-
-        // Check if user only has LOCAL authentication and it's not verified
-        var userAuths = userAuthenticationRepository.findAllByUserId(userId);
-        boolean hasOnlyLocalAuth = userAuths.size() == 1 &&
-                                    userAuths.getFirst().getType() == AuthenticationType.LOCAL;
-
-        if (hasOnlyLocalAuth && !userAuths.getFirst().getEnabled()) {
-            throw new EmailNotVerifiedException("Email verification required to upload profile picture.");
-        }
+        // Retrieve user and verify account is enabled (in read-only transaction)
+        AppUser user = getUserAndValidate(userId);
 
         try {
             // Validate file
@@ -490,21 +478,10 @@ public class UserServiceImpl implements UserService {
             String fileName = UUID.randomUUID() + fileExtension;
             String s3Key = String.format("profile-pictures/%s/%s", userId, fileName);
 
-            // Delete old profile picture if exists
-            if (user.getProfilePictureUrl() != null && !user.getProfilePictureUrl().isEmpty()) {
-                String oldKey = fileStorageService.extractKeyFromUrl(user.getProfilePictureUrl());
-                if (oldKey != null) {
-                    try {
-                        fileStorageService.deleteFile(oldKey);
-                    } catch (Exception e) {
-                        // Log but don't fail if old file deletion fails
-                        logger.warn("Failed to delete old profile picture for user {}: {}",
-                                userId, e.getMessage(), e);
-                    }
-                }
-            }
+            // Store old profile picture URL for cleanup
+            String oldProfilePictureUrl = user.getProfilePictureUrl();
 
-            // Upload to S3
+            // Upload to S3 first (outside transaction)
             String profilePictureUrl = fileStorageService.uploadFile(
                     s3Key,
                     processedImage.inputStream(),
@@ -512,16 +489,78 @@ public class UserServiceImpl implements UserService {
                     processedImage.size()
             );
 
-            // Update user entity
-            user.setProfilePictureUrl(profilePictureUrl);
-            return userRepository.save(user);
+            // Update database in a new transaction
+            try {
+                AppUser updatedUser = updateUserProfilePictureUrl(userId, profilePictureUrl);
+                
+                // Delete old profile picture after successful database update
+                deleteOldProfilePicture(oldProfilePictureUrl, userId);
+                
+                return updatedUser;
+            } catch (Exception dbException) {
+                // Database save failed - compensate by deleting the newly uploaded S3 file
+                try {
+                    fileStorageService.deleteFile(s3Key);
+                    logger.warn("Rolled back S3 upload for user {} after database failure", userId);
+                } catch (Exception s3CleanupException) {
+                    logger.error("Failed to clean up S3 file {} after database failure for user {}: {}",
+                            s3Key, userId, s3CleanupException.getMessage(), s3CleanupException);
+                }
+                throw new FileUploadException("Failed to save profile picture URL to database", dbException);
+            }
 
         } catch (IOException e) {
             throw new FileUploadException("Failed to process image file", e);
         } catch (IllegalArgumentException e) {
             throw e; // Re-throw validation exceptions
+        } catch (FileUploadException e) {
+            throw e; // Re-throw file upload exceptions
         } catch (Exception e) {
             throw new FileUploadException("Failed to upload profile picture: " + e.getMessage(), e);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    private AppUser getUserAndValidate(UUID userId) {
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (!user.getEnabled()) {
+            throw new UserAccountDisabledException("User account is disabled.");
+        }
+
+        // Check if user only has LOCAL authentication and it's not verified
+        var userAuths = userAuthenticationRepository.findAllByUserId(userId);
+        boolean hasOnlyLocalAuth = userAuths.size() == 1 &&
+                                    userAuths.getFirst().getType() == AuthenticationType.LOCAL;
+
+        if (hasOnlyLocalAuth && !userAuths.getFirst().getEnabled()) {
+            throw new EmailNotVerifiedException("Email verification required to upload profile picture.");
+        }
+
+        return user;
+    }
+
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    private AppUser updateUserProfilePictureUrl(UUID userId, String profilePictureUrl) {
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        user.setProfilePictureUrl(profilePictureUrl);
+        return userRepository.save(user);
+    }
+
+    private void deleteOldProfilePicture(String oldProfilePictureUrl, UUID userId) {
+        if (oldProfilePictureUrl != null && !oldProfilePictureUrl.isEmpty()) {
+            String oldKey = fileStorageService.extractKeyFromUrl(oldProfilePictureUrl);
+            if (oldKey != null) {
+                try {
+                    fileStorageService.deleteFile(oldKey);
+                } catch (Exception e) {
+                    // Log but don't fail if old file deletion fails
+                    logger.warn("Failed to delete old profile picture for user {}: {}",
+                            userId, e.getMessage(), e);
+                }
+            }
         }
     }
 }
