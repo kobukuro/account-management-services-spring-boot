@@ -62,3 +62,5 @@ file:
     profile-picture:
       max-width: ${FILE_UPLOAD_PROFILE_PICTURE_MAX_WIDTH:400}
       max-height: ${FILE_UPLOAD_PROFILE_PICTURE_MAX_HEIGHT:400}
+  storage:
+    presigned-url-expiration-hours: ${FILE_STORAGE_PRESIGNED_URL_EXPIRATION_HOURS:24}

@@ -21,6 +21,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.Duration;
 import java.util.UUID;
 
 import static org.mockito.ArgumentMatchers.*;
@@ -95,7 +96,8 @@ public class ProfilePictureUploadIntegrationTest {
                 "test image content".getBytes()
         );
 
-        String expectedUrl = "https://bucket.s3.region.amazonaws.com/profile-pictures/" + testUser.getId() + "/test.png";
+        String s3Key = "profile-pictures/" + testUser.getId() + "/test.png";
+        String expectedPresignedUrl = "https://bucket.s3.region.amazonaws.com/" + s3Key + "?X-Amz-Algorithm=AWS4-HMAC-SHA256";
 
         // Mock image processing service
         doNothing().when(imageProcessingService).validateFileSize(any());
@@ -113,13 +115,14 @@ public class ProfilePictureUploadIntegrationTest {
         when(imageProcessingService.processImage(any())).thenReturn(processedImage);
 
         // Mock file storage service
-        when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong())).thenReturn(expectedUrl);
+        when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong())).thenReturn(s3Key);
+        when(fileStorageService.generatePresignedUrl(eq(s3Key), any(Duration.class))).thenReturn(expectedPresignedUrl);
 
         mockMvc.perform(multipart(UPLOAD_PROFILE_PICTURE_API_PATH)
                         .file(file)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.profilePictureUrl").value(expectedUrl));
+                .andExpect(jsonPath("$.profilePictureUrl").value(expectedPresignedUrl));
 
         // Verify services were called
         verify(imageProcessingService, times(1)).processImage(any());
@@ -251,7 +254,8 @@ public class ProfilePictureUploadIntegrationTest {
                 "test image content".getBytes()
         );
 
-        String expectedUrl = "https://bucket.s3.region.amazonaws.com/profile-pictures/" + localUser.getId() + "/test.png";
+        String s3Key = "profile-pictures/" + localUser.getId() + "/test.png";
+        String expectedPresignedUrl = "https://bucket.s3.region.amazonaws.com/" + s3Key + "?X-Amz-Algorithm=AWS4-HMAC-SHA256";
 
         // Mock image processing service
         doNothing().when(imageProcessingService).validateFileSize(any());
@@ -268,13 +272,14 @@ public class ProfilePictureUploadIntegrationTest {
         when(imageProcessingService.processImage(any())).thenReturn(processedImage);
 
         // Mock file storage service
-        when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong())).thenReturn(expectedUrl);
+        when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong())).thenReturn(s3Key);
+        when(fileStorageService.generatePresignedUrl(eq(s3Key), any(Duration.class))).thenReturn(expectedPresignedUrl);
 
         mockMvc.perform(multipart(UPLOAD_PROFILE_PICTURE_API_PATH)
                         .file(file)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + localAccessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.profilePictureUrl").value(expectedUrl));
+                .andExpect(jsonPath("$.profilePictureUrl").value(expectedPresignedUrl));
 
         verify(imageProcessingService, times(1)).processImage(any());
         verify(fileStorageService, times(1)).uploadFile(anyString(), any(), anyString(), anyLong());
@@ -373,7 +378,8 @@ public class ProfilePictureUploadIntegrationTest {
         );
 
         String oldKey = "profile-pictures/" + testUser.getId() + "/old.png";
-        String newUrl = "https://bucket.s3.region.amazonaws.com/profile-pictures/" + testUser.getId() + "/new.png";
+        String newS3Key = "profile-pictures/" + testUser.getId() + "/new.png";
+        String newPresignedUrl = "https://bucket.s3.region.amazonaws.com/" + newS3Key + "?X-Amz-Algorithm=AWS4-HMAC-SHA256";
 
         // Mock image processing service
         doNothing().when(imageProcessingService).validateFileSize(any());
@@ -392,13 +398,14 @@ public class ProfilePictureUploadIntegrationTest {
         // Mock file storage service
         when(fileStorageService.extractKeyFromUrl(oldPictureUrl)).thenReturn(oldKey);
         doNothing().when(fileStorageService).deleteFile(oldKey);
-        when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong())).thenReturn(newUrl);
+        when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong())).thenReturn(newS3Key);
+        when(fileStorageService.generatePresignedUrl(eq(newS3Key), any(Duration.class))).thenReturn(newPresignedUrl);
 
         mockMvc.perform(multipart(UPLOAD_PROFILE_PICTURE_API_PATH)
                         .file(file)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.profilePictureUrl").value(newUrl));
+                .andExpect(jsonPath("$.profilePictureUrl").value(newPresignedUrl));
 
         // Verify services were called
         verify(imageProcessingService, times(1)).processImage(any());

@@ -36,6 +36,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -60,6 +61,8 @@ public class UserServiceImpl implements UserService {
     private long resetPasswordTokenExpirationInMilliseconds;
     @Value("${frontend-url}")
     private String frontendUrl;
+    @Value("${file.storage.presigned-url-expiration-hours:24}")
+    private int presignedUrlExpirationHours;
     private final KafkaTemplate<String, Event> kafkaTemplate;
 
     private final RestTemplate restTemplate;
@@ -491,7 +494,8 @@ public class UserServiceImpl implements UserService {
             String fileName = UUID.randomUUID() + fileExtension;
             String s3Key = String.format("profile-pictures/%s/%s", userId, fileName);
 
-            String newProfilePictureUrl = fileStorageService.uploadFile(
+            // Upload returns the S3 key (not a public URL - file is private)
+            String uploadedKey = fileStorageService.uploadFile(
                     s3Key,
                     processedImage.inputStream(),
                     processedImage.contentType(),
@@ -499,9 +503,10 @@ public class UserServiceImpl implements UserService {
             );
 
             // Step 4: Update database in separate transaction
+            // Store the S3 key in the database (not a URL)
             AppUser updatedUser;
             try {
-                updatedUser = updateUserProfilePictureUrlInTransaction(userId, newProfilePictureUrl);
+                updatedUser = updateUserProfilePictureUrlInTransaction(userId, uploadedKey);
             } catch (Exception dbException) {
                 // Step 5: Compensate - Delete the newly uploaded S3 file if DB update fails
                 logger.error("Database update failed for user {}, initiating S3 cleanup compensation", userId);
@@ -517,6 +522,17 @@ public class UserServiceImpl implements UserService {
 
             // Step 6: Best-effort cleanup of old file (after successful DB update)
             deleteOldProfilePicture(oldProfilePictureUrl, userId);
+
+            // Step 7: Generate presigned URL for the response (temporary access)
+            // This URL will expire after the configured duration (e.g., 24 hours)
+            String presignedUrl = fileStorageService.generatePresignedUrl(
+                    uploadedKey,
+                    Duration.ofHours(presignedUrlExpirationHours)
+            );
+
+            // Set the presigned URL in the response object for the client
+            // Note: The database stores the S3 key, but we return a presigned URL to the client
+            updatedUser.setProfilePictureUrl(presignedUrl);
 
             return updatedUser;
 
@@ -566,17 +582,23 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
-     * Update user's profile picture URL in the database.
+     * Update user's profile picture S3 key in the database.
      * This runs in a NEW transaction to ensure atomicity and avoid lost updates.
      * The user is re-fetched within this transaction to ensure we're working with
      * the latest state and avoid overwriting concurrent updates to other fields.
+     *
+     * @param userId the user ID
+     * @param s3Key the S3 object key (not a presigned URL) to store in the database
+     * @return the updated user entity
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected AppUser updateUserProfilePictureUrlInTransaction(UUID userId, String profilePictureUrl) {
+    protected AppUser updateUserProfilePictureUrlInTransaction(UUID userId, String s3Key) {
         // Re-fetch user in this new transaction to avoid lost updates
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
-        user.setProfilePictureUrl(profilePictureUrl);
+        // Store the S3 key (not a presigned URL) in the database
+        // Presigned URLs are generated on-demand when needed
+        user.setProfilePictureUrl(s3Key);
         return userRepository.save(user);
     }
 
