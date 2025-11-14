@@ -128,6 +128,7 @@ public class ImageProcessingServiceImpl implements ImageProcessingService {
      * Process and resize image if needed
      * Returns processed image as InputStream and the processed size
      */
+    @Override
     public ProcessedImage processImage(MultipartFile file) throws IOException {
         BufferedImage originalImage = ImageIO.read(file.getInputStream());
         if (originalImage == null) {
