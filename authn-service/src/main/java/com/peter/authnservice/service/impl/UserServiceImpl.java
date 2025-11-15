@@ -479,7 +479,7 @@ public class UserServiceImpl implements UserService {
     public ProfilePictureUploadResponse uploadProfilePicture(UUID userId, MultipartFile file) {
         // Step 1: Validate user and permissions in read-only transaction
         validateUserForProfilePictureUpload(userId);
-        String oldProfilePictureUrl = getOldProfilePictureUrl(userId);
+        String oldProfilePictureKey = getOldProfilePictureKey(userId);
 
         try {
             // Step 2: Validate and process file (no DB or S3 operations)
@@ -509,7 +509,7 @@ public class UserServiceImpl implements UserService {
             // Step 4: Update database in separate transaction
             // Store the S3 key in the database (not a URL)
             try {
-                updateUserProfilePictureUrlInTransaction(userId, uploadedKey);
+                updateUserProfilePictureKeyInTransaction(userId, uploadedKey);
             } catch (Exception dbException) {
                 // Step 5: Compensate - Delete the newly uploaded S3 file if DB update fails
                 logger.error("Database update failed for user {}, initiating S3 cleanup compensation", userId);
@@ -524,7 +524,7 @@ public class UserServiceImpl implements UserService {
             }
 
             // Step 6: Best-effort cleanup of old file (after successful DB update)
-            deleteOldProfilePicture(oldProfilePictureUrl, userId);
+            deleteOldProfilePicture(oldProfilePictureKey, userId);
 
             // Step 7: Generate presigned URL for the response (temporary access)
             // This URL will expire after the configured duration (e.g., 24 hours)
@@ -572,52 +572,49 @@ public class UserServiceImpl implements UserService {
     }
 
     /**
-     * Get the current profile picture URL for cleanup purposes.
+     * Get the current profile picture key for cleanup purposes.
      * This runs in a read-only transaction.
      */
     @Transactional(readOnly = true)
-    protected String getOldProfilePictureUrl(UUID userId) {
+    protected String getOldProfilePictureKey(UUID userId) {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
-        return user.getProfilePictureUrl();
+        return user.getProfilePictureKey();
     }
 
     /**
-     * Update user's profile picture S3 key in the database.
+     * Update user's profile picture storage key in the database.
      * This runs in a NEW transaction to ensure atomicity and avoid lost updates.
      * The user is re-fetched within this transaction to ensure we're working with
      * the latest state and avoid overwriting concurrent updates to other fields.
      *
      * @param userId the user ID
-     * @param s3Key the S3 object key (not a presigned URL) to store in the database
+     * @param storageKey the storage key (e.g., S3 object key) to store in the database
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected void updateUserProfilePictureUrlInTransaction(UUID userId, String s3Key) {
+    protected void updateUserProfilePictureKeyInTransaction(UUID userId, String storageKey) {
         // Re-fetch user in this new transaction to avoid lost updates
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
-        // Store the S3 key (not a presigned URL) in the database
+        // Store the storage key (not a presigned URL) in the database
         // Presigned URLs are generated on-demand when needed
-        user.setProfilePictureUrl(s3Key);
+        user.setProfilePictureKey(storageKey);
         userRepository.save(user);
     }
 
     /**
-     * Delete old profile picture from S3 storage.
+     * Delete old profile picture from storage.
      * This is a best-effort operation - failures are logged but don't fail the upload.
      */
-    protected void deleteOldProfilePicture(String oldProfilePictureUrl, UUID userId) {
-        if (oldProfilePictureUrl != null && !oldProfilePictureUrl.isEmpty()) {
-            String oldKey = fileStorageService.extractKeyFromUrl(oldProfilePictureUrl);
-            if (oldKey != null) {
-                try {
-                    fileStorageService.deleteFile(oldKey);
-                    logger.info("Successfully deleted old profile picture {} for user {}", oldKey, userId);
-                } catch (Exception e) {
-                    // Log but don't fail if old file deletion fails
-                    logger.warn("Failed to delete old profile picture {} for user {}: {}",
-                            oldKey, userId, e.getMessage(), e);
-                }
+    protected void deleteOldProfilePicture(String oldProfilePictureKey, UUID userId) {
+        if (oldProfilePictureKey != null && !oldProfilePictureKey.isEmpty()) {
+            try {
+                fileStorageService.deleteFile(oldProfilePictureKey);
+                logger.info("Successfully deleted old profile picture {} for user {}", oldProfilePictureKey, userId);
+            } catch (Exception e) {
+                // Log but don't fail if old file deletion fails
+                logger.warn("Failed to delete old profile picture {} for user {}: {}",
+                        oldProfilePictureKey, userId, e.getMessage(), e);
             }
         }
     }

@@ -394,8 +394,8 @@ public class UserServiceImplTest {
     void whenUploadProfilePictureWithExistingPicture_thenReplacesOldPicture() throws IOException {
         UUID userId = UUID.randomUUID();
         AppUser user = new AppUser(userId, "John", "Doe", true);
-        String oldPictureUrl = "https://bucket.s3.region.amazonaws.com/profile-pictures/" + userId + "/old.png";
-        user.setProfilePictureUrl(oldPictureUrl);
+        String oldPictureKey = "profile-pictures/" + userId + "/old.png";
+        user.setProfilePictureKey(oldPictureKey);
         MultipartFile file = mock(MultipartFile.class);
 
         UserAuthentication googleAuth = UserAuthentication.createOAuthAuth(user, AuthenticationType.GOOGLE, "google-uid-123", "john@example.com");
@@ -406,7 +406,6 @@ public class UserServiceImplTest {
                 "image/png"
         );
 
-        String oldKey = "profile-pictures/" + userId + "/old.png";
         String newS3Key = "profile-pictures/" + userId + "/new.png";
         String expectedPresignedUrl = "https://bucket.s3.region.amazonaws.com/" + newS3Key + "?X-Amz-Algorithm=AWS4-HMAC-SHA256";
 
@@ -419,8 +418,7 @@ public class UserServiceImplTest {
         doNothing().when(imageProcessingService).validateFileExtension(anyString());
         doNothing().when(imageProcessingService).validateMagicNumber(any(byte[].class));
         when(imageProcessingService.processImage(any(byte[].class))).thenReturn(processedImage);
-        when(fileStorageService.extractKeyFromUrl(oldPictureUrl)).thenReturn(oldKey);
-        doNothing().when(fileStorageService).deleteFile(oldKey);
+        doNothing().when(fileStorageService).deleteFile(oldPictureKey);
         when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong())).thenReturn(newS3Key);
         when(fileStorageService.generatePresignedUrl(eq(newS3Key), any(Duration.class))).thenReturn(expectedPresignedUrl);
         when(userRepository.save(any(AppUser.class))).thenReturn(user);
@@ -429,8 +427,7 @@ public class UserServiceImplTest {
 
         assertNotNull(result);
         assertEquals(expectedPresignedUrl, result.profilePictureUrl());
-        verify(fileStorageService).extractKeyFromUrl(oldPictureUrl);
-        verify(fileStorageService).deleteFile(oldKey);
+        verify(fileStorageService).deleteFile(oldPictureKey);
         verify(fileStorageService).uploadFile(anyString(), any(), eq("image/png"), eq(100L));
         verify(userRepository).save(user);
     }
@@ -490,8 +487,8 @@ public class UserServiceImplTest {
     void whenUploadProfilePictureAndOldPictureDeletionFails_thenContinuesWithUpload() throws IOException {
         UUID userId = UUID.randomUUID();
         AppUser user = new AppUser(userId, "John", "Doe", true);
-        String oldPictureUrl = "https://bucket.s3.region.amazonaws.com/profile-pictures/" + userId + "/old.png";
-        user.setProfilePictureUrl(oldPictureUrl);
+        String oldPictureKey = "profile-pictures/" + userId + "/old.png";
+        user.setProfilePictureKey(oldPictureKey);
         MultipartFile file = mock(MultipartFile.class);
 
         UserAuthentication googleAuth = UserAuthentication.createOAuthAuth(user, AuthenticationType.GOOGLE, "google-uid-123", "john@example.com");
@@ -502,7 +499,6 @@ public class UserServiceImplTest {
                 "image/png"
         );
 
-        String oldKey = "profile-pictures/" + userId + "/old.png";
         String newS3Key = "profile-pictures/" + userId + "/new.png";
         String expectedPresignedUrl = "https://bucket.s3.region.amazonaws.com/" + newS3Key + "?X-Amz-Algorithm=AWS4-HMAC-SHA256";
 
@@ -515,9 +511,8 @@ public class UserServiceImplTest {
         doNothing().when(imageProcessingService).validateFileExtension(anyString());
         doNothing().when(imageProcessingService).validateMagicNumber(any(byte[].class));
         when(imageProcessingService.processImage(any(byte[].class))).thenReturn(processedImage);
-        when(fileStorageService.extractKeyFromUrl(oldPictureUrl)).thenReturn(oldKey);
         // Simulate deletion failure
-        doThrow(new RuntimeException("S3 deletion failed")).when(fileStorageService).deleteFile(oldKey);
+        doThrow(new RuntimeException("S3 deletion failed")).when(fileStorageService).deleteFile(oldPictureKey);
         when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong())).thenReturn(newS3Key);
         when(fileStorageService.generatePresignedUrl(eq(newS3Key), any(Duration.class))).thenReturn(expectedPresignedUrl);
         when(userRepository.save(any(AppUser.class))).thenReturn(user);
@@ -527,8 +522,7 @@ public class UserServiceImplTest {
 
         assertNotNull(result);
         assertEquals(expectedPresignedUrl, result.profilePictureUrl());
-        verify(fileStorageService).extractKeyFromUrl(oldPictureUrl);
-        verify(fileStorageService).deleteFile(oldKey); // Attempted deletion
+        verify(fileStorageService).deleteFile(oldPictureKey); // Attempted deletion
         verify(fileStorageService).uploadFile(anyString(), any(), eq("image/png"), eq(100L)); // Upload still succeeded
         verify(userRepository).save(user);
     }
@@ -623,7 +617,7 @@ public class UserServiceImplTest {
     void whenUploadProfilePictureWithEmptyProfilePictureUrl_thenSuccessfullyUploads() throws IOException {
         UUID userId = UUID.randomUUID();
         AppUser user = new AppUser(userId, "John", "Doe", true);
-        user.setProfilePictureUrl(""); // Empty string
+        user.setProfilePictureKey(""); // Empty string
         MultipartFile file = mock(MultipartFile.class);
 
         UserAuthentication googleAuth = UserAuthentication.createOAuthAuth(user, AuthenticationType.GOOGLE, "google-uid-123", "john@example.com");
@@ -654,55 +648,7 @@ public class UserServiceImplTest {
 
         assertNotNull(result);
         assertEquals(expectedPresignedUrl, result.profilePictureUrl());
-        // Verify extractKeyFromUrl was NOT called since URL is empty
-        verify(fileStorageService, never()).extractKeyFromUrl(anyString());
-        verify(fileStorageService, never()).deleteFile(anyString());
-        verify(fileStorageService).uploadFile(anyString(), any(), eq("image/png"), eq(100L));
-        verify(userRepository).save(user);
-    }
-
-    /**
-     * Test uploadProfilePicture when extractKeyFromUrl returns null
-     */
-    @Test
-    void whenUploadProfilePictureAndExtractKeyReturnsNull_thenSkipsDeletion() throws IOException {
-        UUID userId = UUID.randomUUID();
-        AppUser user = new AppUser(userId, "John", "Doe", true);
-        String oldPictureUrl = "https://invalid-url.com/some-path/image.jpg";
-        user.setProfilePictureUrl(oldPictureUrl);
-        MultipartFile file = mock(MultipartFile.class);
-
-        UserAuthentication googleAuth = UserAuthentication.createOAuthAuth(user, AuthenticationType.GOOGLE, "google-uid-123", "john@example.com");
-
-        ProcessedImage processedImage = new ProcessedImage(
-                new ByteArrayInputStream(new byte[100]),
-                100L,
-                "image/png"
-        );
-
-        String newS3Key = "profile-pictures/" + userId + "/new.png";
-        String expectedPresignedUrl = "https://bucket.s3.region.amazonaws.com/" + newS3Key + "?X-Amz-Algorithm=AWS4-HMAC-SHA256";
-
-        when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(userAuthenticationRepository.findAllByUserId(userId)).thenReturn(List.of(googleAuth));
-        when(file.getOriginalFilename()).thenReturn("test.jpg");
-        when(file.getBytes()).thenReturn(new byte[100]);
-        doNothing().when(imageProcessingService).validateFileSize(file);
-        doNothing().when(imageProcessingService).validateContentType(file);
-        doNothing().when(imageProcessingService).validateFileExtension(anyString());
-        doNothing().when(imageProcessingService).validateMagicNumber(any(byte[].class));
-        when(imageProcessingService.processImage(any(byte[].class))).thenReturn(processedImage);
-        when(fileStorageService.extractKeyFromUrl(oldPictureUrl)).thenReturn(null); // Returns null for invalid URL
-        when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong())).thenReturn(newS3Key);
-        when(fileStorageService.generatePresignedUrl(eq(newS3Key), any(Duration.class))).thenReturn(expectedPresignedUrl);
-        when(userRepository.save(any(AppUser.class))).thenReturn(user);
-
-        ProfilePictureUploadResponse result = userService.uploadProfilePicture(userId, file);
-
-        assertNotNull(result);
-        assertEquals(expectedPresignedUrl, result.profilePictureUrl());
-        verify(fileStorageService).extractKeyFromUrl(oldPictureUrl);
-        // Verify deleteFile was NOT called since extractKeyFromUrl returned null
+        // Verify deletion was NOT called since key is empty
         verify(fileStorageService, never()).deleteFile(anyString());
         verify(fileStorageService).uploadFile(anyString(), any(), eq("image/png"), eq(100L));
         verify(userRepository).save(user);

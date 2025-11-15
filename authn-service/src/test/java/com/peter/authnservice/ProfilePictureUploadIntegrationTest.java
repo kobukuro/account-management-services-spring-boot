@@ -366,8 +366,8 @@ public class ProfilePictureUploadIntegrationTest {
     @Test
     void whenUploadProfilePictureWithExistingPicture_thenReplacesOldPicture() throws Exception {
         // Set existing profile picture
-        String oldPictureUrl = "https://bucket.s3.region.amazonaws.com/profile-pictures/" + testUser.getId() + "/old.png";
-        testUser.setProfilePictureUrl(oldPictureUrl);
+        String oldPictureKey = "profile-pictures/" + testUser.getId() + "/old.png";
+        testUser.setProfilePictureKey(oldPictureKey);
         userRepository.save(testUser);
 
         MockMultipartFile file = new MockMultipartFile(
@@ -377,7 +377,6 @@ public class ProfilePictureUploadIntegrationTest {
                 "new image content".getBytes()
         );
 
-        String oldKey = "profile-pictures/" + testUser.getId() + "/old.png";
         String newS3Key = "profile-pictures/" + testUser.getId() + "/new.png";
         String newPresignedUrl = "https://bucket.s3.region.amazonaws.com/" + newS3Key + "?X-Amz-Algorithm=AWS4-HMAC-SHA256";
 
@@ -396,8 +395,7 @@ public class ProfilePictureUploadIntegrationTest {
         when(imageProcessingService.processImage(any())).thenReturn(processedImage);
 
         // Mock file storage service
-        when(fileStorageService.extractKeyFromUrl(oldPictureUrl)).thenReturn(oldKey);
-        doNothing().when(fileStorageService).deleteFile(oldKey);
+        doNothing().when(fileStorageService).deleteFile(oldPictureKey);
         when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong())).thenReturn(newS3Key);
         when(fileStorageService.generatePresignedUrl(eq(newS3Key), any(Duration.class))).thenReturn(newPresignedUrl);
 
@@ -409,8 +407,7 @@ public class ProfilePictureUploadIntegrationTest {
 
         // Verify services were called
         verify(imageProcessingService, times(1)).processImage(any());
-        verify(fileStorageService, times(1)).extractKeyFromUrl(oldPictureUrl);
-        verify(fileStorageService, times(1)).deleteFile(oldKey);
+        verify(fileStorageService, times(1)).deleteFile(oldPictureKey);
         verify(fileStorageService, times(1)).uploadFile(anyString(), any(), anyString(), anyLong());
     }
 }
