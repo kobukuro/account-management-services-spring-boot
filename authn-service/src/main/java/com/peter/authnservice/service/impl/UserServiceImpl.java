@@ -482,12 +482,15 @@ public class UserServiceImpl implements UserService {
 
         try {
             // Step 2: Validate and process file (no DB or S3 operations)
+            // Read file bytes once to avoid stream exhaustion
+            byte[] fileBytes = file.getBytes();
+            
             imageProcessingService.validateFileSize(file);
             imageProcessingService.validateContentType(file);
             imageProcessingService.validateFileExtension(file.getOriginalFilename());
-            imageProcessingService.validateMagicNumber(file);
+            imageProcessingService.validateMagicNumber(fileBytes);
 
-            ProcessedImage processedImage = imageProcessingService.processImage(file);
+            ProcessedImage processedImage = imageProcessingService.processImage(fileBytes);
 
             // Step 3: Upload to S3 first (before DB update)
             String fileExtension = ".png"; // We're converting to PNG
