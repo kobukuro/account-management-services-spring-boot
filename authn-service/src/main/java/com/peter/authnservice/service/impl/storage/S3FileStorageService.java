@@ -95,7 +95,7 @@ public class S3FileStorageService implements FileStorageService {
         }
 
         // Remove query parameters from presigned URLs
-        String urlWithoutQuery = url.split("\\?")[0];
+        String urlWithoutQuery = url.split("\\?", 2)[0];
 
         // Extract protocol and rest of URL
         String protocol = urlWithoutQuery.startsWith("https://") ? "https://" : "http://";
