@@ -15,6 +15,7 @@ import lombok.AllArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -384,7 +385,10 @@ public class UserController {
     public ResponseEntity<ProfilePictureUploadResponse> uploadProfilePicture(
             Authentication authentication,
             @RequestParam("file") MultipartFile file) {
-        UUID userId = authentication.getName() != null ? UUID.fromString(authentication.getName()) : null;
+        if (authentication.getName() == null) {
+            throw new AuthenticationCredentialsNotFoundException("User ID is required");
+        }
+        UUID userId = UUID.fromString(authentication.getName());
         AppUser updatedUser = userService.uploadProfilePicture(userId, file);
         ProfilePictureUploadResponse response = new ProfilePictureUploadResponse(
                 updatedUser.getProfilePictureUrl()
