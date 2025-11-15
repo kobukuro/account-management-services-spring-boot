@@ -183,42 +183,38 @@ class ImageProcessingServiceImplTest {
     void validateMagicNumber_shouldPassForJpegFile() {
         // Given - JPEG magic number: FF D8 FF
         byte[] jpegContent = new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0x00, 0x10};
-        MultipartFile file = new MockMultipartFile("file", "test.jpg", "image/jpeg", jpegContent);
 
         // When/Then
-        assertDoesNotThrow(() -> imageProcessingService.validateMagicNumber(file));
+        assertDoesNotThrow(() -> imageProcessingService.validateMagicNumber(jpegContent));
     }
 
     @Test
     void validateMagicNumber_shouldPassForPngFile() {
         // Given - PNG magic number: 89 50 4E 47
         byte[] pngContent = new byte[]{(byte) 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A};
-        MultipartFile file = new MockMultipartFile("file", "test.png", "image/png", pngContent);
 
         // When/Then
-        assertDoesNotThrow(() -> imageProcessingService.validateMagicNumber(file));
+        assertDoesNotThrow(() -> imageProcessingService.validateMagicNumber(pngContent));
     }
 
     @Test
     void validateMagicNumber_shouldPassForWebpFile() {
         // Given - WebP magic number: 52 49 46 46 (RIFF)
         byte[] webpContent = new byte[]{0x52, 0x49, 0x46, 0x46, 0x00, 0x00, 0x00, 0x00};
-        MultipartFile file = new MockMultipartFile("file", "test.webp", "image/webp", webpContent);
 
         // When/Then
-        assertDoesNotThrow(() -> imageProcessingService.validateMagicNumber(file));
+        assertDoesNotThrow(() -> imageProcessingService.validateMagicNumber(webpContent));
     }
 
     @Test
     void validateMagicNumber_shouldThrowExceptionForTooSmallFile() {
         // Given
         byte[] content = new byte[]{0x01, 0x02}; // Only 2 bytes
-        MultipartFile file = new MockMultipartFile("file", "test.jpg", "image/jpeg", content);
 
         // When/Then
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> imageProcessingService.validateMagicNumber(file)
+                () -> imageProcessingService.validateMagicNumber(content)
         );
         assertEquals("File is too small to be a valid image", exception.getMessage());
     }
@@ -229,12 +225,11 @@ class ImageProcessingServiceImplTest {
         // This passes the minimum size check (4 bytes) and tests all three magic number checks
         // The startsWithMagicNumber method is called for JPEG (3 bytes), PNG (4 bytes), and WEBP (4 bytes)
         byte[] content = new byte[]{0x01, 0x02, 0x03, 0x04}; // 4 bytes - not a valid magic number
-        MultipartFile file = new MockMultipartFile("file", "test.png", "image/png", content);
 
         // When/Then
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> imageProcessingService.validateMagicNumber(file)
+                () -> imageProcessingService.validateMagicNumber(content)
         );
         assertEquals("File content does not match a valid image format", exception.getMessage());
     }
@@ -243,12 +238,11 @@ class ImageProcessingServiceImplTest {
     void validateMagicNumber_shouldThrowExceptionForInvalidMagicNumber() {
         // Given - Invalid magic number
         byte[] content = new byte[]{0x00, 0x00, 0x00, 0x00, 0x00};
-        MultipartFile file = new MockMultipartFile("file", "test.jpg", "image/jpeg", content);
 
         // When/Then
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> imageProcessingService.validateMagicNumber(file)
+                () -> imageProcessingService.validateMagicNumber(content)
         );
         assertEquals("File content does not match a valid image format", exception.getMessage());
     }
@@ -272,10 +266,8 @@ class ImageProcessingServiceImplTest {
         ImageIO.write(testImage, "png", baos);
         byte[] imageBytes = baos.toByteArray();
 
-        MultipartFile file = new MockMultipartFile("file", "test.png", "image/png", imageBytes);
-
         // When
-        ProcessedImage result = imageProcessingService.processImage(file);
+        ProcessedImage result = imageProcessingService.processImage(imageBytes);
 
         // Then
         assertNotNull(result);
@@ -311,10 +303,8 @@ class ImageProcessingServiceImplTest {
         ImageIO.write(testImage, "png", baos);
         byte[] imageBytes = baos.toByteArray();
 
-        MultipartFile file = new MockMultipartFile("file", "test.png", "image/png", imageBytes);
-
         // When
-        ProcessedImage result = imageProcessingService.processImage(file);
+        ProcessedImage result = imageProcessingService.processImage(imageBytes);
 
         // Then
         assertNotNull(result);
@@ -341,12 +331,11 @@ class ImageProcessingServiceImplTest {
     void processImage_shouldThrowExceptionForInvalidImageFile() {
         // Given - Invalid image data
         byte[] invalidContent = "not an image".getBytes();
-        MultipartFile file = new MockMultipartFile("file", "test.png", "image/png", invalidContent);
 
         // When/Then
         IllegalArgumentException exception = assertThrows(
                 IllegalArgumentException.class,
-                () -> imageProcessingService.processImage(file)
+                () -> imageProcessingService.processImage(invalidContent)
         );
         assertEquals("Unable to read image file", exception.getMessage());
     }
@@ -361,10 +350,8 @@ class ImageProcessingServiceImplTest {
         ImageIO.write(testImage, "png", baos);
         byte[] imageBytes = baos.toByteArray();
 
-        MultipartFile file = new MockMultipartFile("file", "test.png", "image/png", imageBytes);
-
         // When
-        ProcessedImage result = imageProcessingService.processImage(file);
+        ProcessedImage result = imageProcessingService.processImage(imageBytes);
 
         // Then
         assertNotNull(result);

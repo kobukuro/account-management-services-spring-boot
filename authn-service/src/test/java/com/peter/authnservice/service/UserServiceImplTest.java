@@ -322,11 +322,12 @@ public class UserServiceImplTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userAuthenticationRepository.findAllByUserId(userId)).thenReturn(List.of(localAuth));
         when(file.getOriginalFilename()).thenReturn("test.jpg");
+        when(file.getBytes()).thenReturn(new byte[100]);
         doNothing().when(imageProcessingService).validateFileSize(file);
         doNothing().when(imageProcessingService).validateContentType(file);
         doNothing().when(imageProcessingService).validateFileExtension(anyString());
-        doNothing().when(imageProcessingService).validateMagicNumber(file);
-        when(imageProcessingService.processImage(file)).thenReturn(processedImage);
+        doNothing().when(imageProcessingService).validateMagicNumber(any(byte[].class));
+        when(imageProcessingService.processImage(any(byte[].class))).thenReturn(processedImage);
         when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong())).thenReturn(s3Key);
         when(fileStorageService.generatePresignedUrl(eq(s3Key), any(Duration.class))).thenReturn(expectedPresignedUrl);
         when(userRepository.save(any(AppUser.class))).thenReturn(user);
@@ -338,8 +339,8 @@ public class UserServiceImplTest {
         verify(imageProcessingService).validateFileSize(file);
         verify(imageProcessingService).validateContentType(file);
         verify(imageProcessingService).validateFileExtension(anyString());
-        verify(imageProcessingService).validateMagicNumber(file);
-        verify(imageProcessingService).processImage(file);
+        verify(imageProcessingService).validateMagicNumber(any(byte[].class));
+        verify(imageProcessingService).processImage(any(byte[].class));
         verify(fileStorageService).uploadFile(anyString(), any(), eq("image/png"), eq(100L));
         verify(userRepository).save(user);
     }
@@ -367,11 +368,12 @@ public class UserServiceImplTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userAuthenticationRepository.findAllByUserId(userId)).thenReturn(List.of(googleAuth));
         when(file.getOriginalFilename()).thenReturn("test.jpg");
+        when(file.getBytes()).thenReturn(new byte[100]);
         doNothing().when(imageProcessingService).validateFileSize(file);
         doNothing().when(imageProcessingService).validateContentType(file);
         doNothing().when(imageProcessingService).validateFileExtension(anyString());
-        doNothing().when(imageProcessingService).validateMagicNumber(file);
-        when(imageProcessingService.processImage(file)).thenReturn(processedImage);
+        doNothing().when(imageProcessingService).validateMagicNumber(any(byte[].class));
+        when(imageProcessingService.processImage(any(byte[].class))).thenReturn(processedImage);
         when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong())).thenReturn(s3Key);
         when(fileStorageService.generatePresignedUrl(eq(s3Key), any(Duration.class))).thenReturn(expectedPresignedUrl);
         when(userRepository.save(any(AppUser.class))).thenReturn(user);
@@ -410,11 +412,12 @@ public class UserServiceImplTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userAuthenticationRepository.findAllByUserId(userId)).thenReturn(List.of(googleAuth));
         when(file.getOriginalFilename()).thenReturn("test.jpg");
+        when(file.getBytes()).thenReturn(new byte[100]);
         doNothing().when(imageProcessingService).validateFileSize(file);
         doNothing().when(imageProcessingService).validateContentType(file);
         doNothing().when(imageProcessingService).validateFileExtension(anyString());
-        doNothing().when(imageProcessingService).validateMagicNumber(file);
-        when(imageProcessingService.processImage(file)).thenReturn(processedImage);
+        doNothing().when(imageProcessingService).validateMagicNumber(any(byte[].class));
+        when(imageProcessingService.processImage(any(byte[].class))).thenReturn(processedImage);
         when(fileStorageService.extractKeyFromUrl(oldPictureUrl)).thenReturn(oldKey);
         doNothing().when(fileStorageService).deleteFile(oldKey);
         when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong())).thenReturn(newS3Key);
@@ -466,14 +469,15 @@ public class UserServiceImplTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userAuthenticationRepository.findAllByUserId(userId)).thenReturn(List.of(googleAuth));
         when(file.getOriginalFilename()).thenReturn("test.jpg");
+        when(file.getBytes()).thenReturn(new byte[100]);
         doNothing().when(imageProcessingService).validateFileSize(file);
         doNothing().when(imageProcessingService).validateContentType(file);
         doNothing().when(imageProcessingService).validateFileExtension(anyString());
-        doNothing().when(imageProcessingService).validateMagicNumber(file);
-        when(imageProcessingService.processImage(file)).thenThrow(new IOException("Processing failed"));
+        doNothing().when(imageProcessingService).validateMagicNumber(any(byte[].class));
+        when(imageProcessingService.processImage(any(byte[].class))).thenThrow(new IOException("Processing failed"));
 
         assertThrows(FileUploadException.class, () -> userService.uploadProfilePicture(userId, file));
-        verify(imageProcessingService).processImage(file);
+        verify(imageProcessingService).processImage(any(byte[].class));
         verifyNoInteractions(fileStorageService);
         verify(userRepository, never()).save(any());
     }
@@ -504,11 +508,12 @@ public class UserServiceImplTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userAuthenticationRepository.findAllByUserId(userId)).thenReturn(List.of(googleAuth));
         when(file.getOriginalFilename()).thenReturn("test.jpg");
+        when(file.getBytes()).thenReturn(new byte[100]);
         doNothing().when(imageProcessingService).validateFileSize(file);
         doNothing().when(imageProcessingService).validateContentType(file);
         doNothing().when(imageProcessingService).validateFileExtension(anyString());
-        doNothing().when(imageProcessingService).validateMagicNumber(file);
-        when(imageProcessingService.processImage(file)).thenReturn(processedImage);
+        doNothing().when(imageProcessingService).validateMagicNumber(any(byte[].class));
+        when(imageProcessingService.processImage(any(byte[].class))).thenReturn(processedImage);
         when(fileStorageService.extractKeyFromUrl(oldPictureUrl)).thenReturn(oldKey);
         // Simulate deletion failure
         doThrow(new RuntimeException("S3 deletion failed")).when(fileStorageService).deleteFile(oldKey);
@@ -547,11 +552,12 @@ public class UserServiceImplTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userAuthenticationRepository.findAllByUserId(userId)).thenReturn(List.of(googleAuth));
         when(file.getOriginalFilename()).thenReturn("test.jpg");
+        when(file.getBytes()).thenReturn(new byte[100]);
         doNothing().when(imageProcessingService).validateFileSize(file);
         doNothing().when(imageProcessingService).validateContentType(file);
         doNothing().when(imageProcessingService).validateFileExtension(anyString());
-        doNothing().when(imageProcessingService).validateMagicNumber(file);
-        when(imageProcessingService.processImage(file)).thenReturn(processedImage);
+        doNothing().when(imageProcessingService).validateMagicNumber(any(byte[].class));
+        when(imageProcessingService.processImage(any(byte[].class))).thenReturn(processedImage);
         // Simulate storage upload failure with generic exception
         when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong()))
                 .thenThrow(new RuntimeException("S3 connection failed"));
@@ -560,7 +566,7 @@ public class UserServiceImplTest {
                 () -> userService.uploadProfilePicture(userId, file));
 
         assertTrue(exception.getMessage().contains("Failed to upload profile picture"));
-        verify(imageProcessingService).processImage(file);
+        verify(imageProcessingService).processImage(any(byte[].class));
         verify(fileStorageService).uploadFile(anyString(), any(), eq("image/png"), eq(100L));
         verify(userRepository, never()).save(any());
     }
@@ -591,11 +597,12 @@ public class UserServiceImplTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userAuthenticationRepository.findAllByUserId(userId)).thenReturn(List.of(localAuth, googleAuth));
         when(file.getOriginalFilename()).thenReturn("test.jpg");
+        when(file.getBytes()).thenReturn(new byte[100]);
         doNothing().when(imageProcessingService).validateFileSize(file);
         doNothing().when(imageProcessingService).validateContentType(file);
         doNothing().when(imageProcessingService).validateFileExtension(anyString());
-        doNothing().when(imageProcessingService).validateMagicNumber(file);
-        when(imageProcessingService.processImage(file)).thenReturn(processedImage);
+        doNothing().when(imageProcessingService).validateMagicNumber(any(byte[].class));
+        when(imageProcessingService.processImage(any(byte[].class))).thenReturn(processedImage);
         when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong())).thenReturn(s3Key);
         when(fileStorageService.generatePresignedUrl(eq(s3Key), any(Duration.class))).thenReturn(expectedPresignedUrl);
         when(userRepository.save(any(AppUser.class))).thenReturn(user);
@@ -632,11 +639,12 @@ public class UserServiceImplTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userAuthenticationRepository.findAllByUserId(userId)).thenReturn(List.of(googleAuth));
         when(file.getOriginalFilename()).thenReturn("test.jpg");
+        when(file.getBytes()).thenReturn(new byte[100]);
         doNothing().when(imageProcessingService).validateFileSize(file);
         doNothing().when(imageProcessingService).validateContentType(file);
         doNothing().when(imageProcessingService).validateFileExtension(anyString());
-        doNothing().when(imageProcessingService).validateMagicNumber(file);
-        when(imageProcessingService.processImage(file)).thenReturn(processedImage);
+        doNothing().when(imageProcessingService).validateMagicNumber(any(byte[].class));
+        when(imageProcessingService.processImage(any(byte[].class))).thenReturn(processedImage);
         when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong())).thenReturn(s3Key);
         when(fileStorageService.generatePresignedUrl(eq(s3Key), any(Duration.class))).thenReturn(expectedPresignedUrl);
         when(userRepository.save(any(AppUser.class))).thenReturn(user);
@@ -677,11 +685,12 @@ public class UserServiceImplTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(userAuthenticationRepository.findAllByUserId(userId)).thenReturn(List.of(googleAuth));
         when(file.getOriginalFilename()).thenReturn("test.jpg");
+        when(file.getBytes()).thenReturn(new byte[100]);
         doNothing().when(imageProcessingService).validateFileSize(file);
         doNothing().when(imageProcessingService).validateContentType(file);
         doNothing().when(imageProcessingService).validateFileExtension(anyString());
-        doNothing().when(imageProcessingService).validateMagicNumber(file);
-        when(imageProcessingService.processImage(file)).thenReturn(processedImage);
+        doNothing().when(imageProcessingService).validateMagicNumber(any(byte[].class));
+        when(imageProcessingService.processImage(any(byte[].class))).thenReturn(processedImage);
         when(fileStorageService.extractKeyFromUrl(oldPictureUrl)).thenReturn(null); // Returns null for invalid URL
         when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong())).thenReturn(newS3Key);
         when(fileStorageService.generatePresignedUrl(eq(newS3Key), any(Duration.class))).thenReturn(expectedPresignedUrl);
@@ -724,11 +733,12 @@ public class UserServiceImplTest {
 
         when(userAuthenticationRepository.findAllByUserId(userId)).thenReturn(List.of(googleAuth));
         when(file.getOriginalFilename()).thenReturn("test.jpg");
+        when(file.getBytes()).thenReturn(new byte[100]);
         doNothing().when(imageProcessingService).validateFileSize(file);
         doNothing().when(imageProcessingService).validateContentType(file);
         doNothing().when(imageProcessingService).validateFileExtension(anyString());
-        doNothing().when(imageProcessingService).validateMagicNumber(file);
-        when(imageProcessingService.processImage(file)).thenReturn(processedImage);
+        doNothing().when(imageProcessingService).validateMagicNumber(any(byte[].class));
+        when(imageProcessingService.processImage(any(byte[].class))).thenReturn(processedImage);
 
         // uploadFile returns the S3 key
         when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong()))
@@ -779,11 +789,12 @@ public class UserServiceImplTest {
 
         when(userAuthenticationRepository.findAllByUserId(userId)).thenReturn(List.of(googleAuth));
         when(file.getOriginalFilename()).thenReturn("test.jpg");
+        when(file.getBytes()).thenReturn(new byte[100]);
         doNothing().when(imageProcessingService).validateFileSize(file);
         doNothing().when(imageProcessingService).validateContentType(file);
         doNothing().when(imageProcessingService).validateFileExtension(anyString());
-        doNothing().when(imageProcessingService).validateMagicNumber(file);
-        when(imageProcessingService.processImage(file)).thenReturn(processedImage);
+        doNothing().when(imageProcessingService).validateMagicNumber(any(byte[].class));
+        when(imageProcessingService.processImage(any(byte[].class))).thenReturn(processedImage);
         when(fileStorageService.uploadFile(anyString(), any(), anyString(), anyLong()))
                 .thenAnswer(invocation -> invocation.getArgument(0)); // Return the S3 key
 

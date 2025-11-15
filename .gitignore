@@ -2,3 +2,6 @@
 .idea
 
 .claude
+
+# Environment files
+.env

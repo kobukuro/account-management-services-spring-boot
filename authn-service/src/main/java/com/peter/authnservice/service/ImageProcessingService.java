@@ -13,7 +13,7 @@ public interface ImageProcessingService {
 
     void validateFileExtension(String filename);
 
-    void validateMagicNumber(MultipartFile file) throws IOException;
+    void validateMagicNumber(byte[] fileBytes) throws IOException;
 
-    ProcessedImage processImage(MultipartFile file) throws IOException;
+    ProcessedImage processImage(byte[] fileBytes) throws IOException;
 }

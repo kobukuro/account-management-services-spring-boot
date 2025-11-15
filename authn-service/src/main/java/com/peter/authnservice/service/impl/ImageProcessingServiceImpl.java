@@ -2,7 +2,6 @@ package com.peter.authnservice.service.impl;
 
 import com.peter.authnservice.domain.dto.ProcessedImage;
 import com.peter.authnservice.service.ImageProcessingService;
-import org.apache.commons.io.IOUtils;
 import org.imgscalr.Scalr;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -97,8 +96,7 @@ public class ImageProcessingServiceImpl implements ImageProcessingService {
      * Validate file magic number to prevent spoofed file types
      */
     @Override
-    public void validateMagicNumber(MultipartFile file) throws IOException {
-        byte[] fileBytes = IOUtils.toByteArray(file.getInputStream());
+    public void validateMagicNumber(byte[] fileBytes) throws IOException {
         if (fileBytes.length < 4) {
             throw new IllegalArgumentException("File is too small to be a valid image");
         }
@@ -129,8 +127,8 @@ public class ImageProcessingServiceImpl implements ImageProcessingService {
      * Returns processed image as InputStream and the processed size
      */
     @Override
-    public ProcessedImage processImage(MultipartFile file) throws IOException {
-        BufferedImage originalImage = ImageIO.read(file.getInputStream());
+    public ProcessedImage processImage(byte[] fileBytes) throws IOException {
+        BufferedImage originalImage = ImageIO.read(new ByteArrayInputStream(fileBytes));
         if (originalImage == null) {
             throw new IllegalArgumentException("Unable to read image file");
         }
