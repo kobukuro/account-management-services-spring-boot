@@ -1,1 +1,1 @@
-ALTER TABLE app_user ADD COLUMN profile_picture_url VARCHAR(500);
+ALTER TABLE app_user ADD COLUMN profile_picture_url TEXT;
