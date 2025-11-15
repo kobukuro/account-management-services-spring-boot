@@ -1,5 +1,6 @@
 package com.peter.authnservice.service;
 
+import com.peter.authnservice.domain.dto.ProfilePictureUploadResponse;
 import com.peter.authnservice.domain.dto.TokenPair;
 import com.peter.authnservice.domain.entity.AppUser;
 import org.springframework.web.multipart.MultipartFile;
@@ -27,5 +28,5 @@ public interface UserService {
 
     AppUser updateProfile(UUID userId, String firstName, String lastName);
 
-    AppUser uploadProfilePicture(UUID userId, MultipartFile file);
+    ProfilePictureUploadResponse uploadProfilePicture(UUID userId, MultipartFile file);
 }

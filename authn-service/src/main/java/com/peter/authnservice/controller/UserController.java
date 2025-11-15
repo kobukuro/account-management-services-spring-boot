@@ -389,10 +389,7 @@ public class UserController {
             throw new AuthenticationCredentialsNotFoundException("User ID is required");
         }
         UUID userId = UUID.fromString(authentication.getName());
-        AppUser updatedUser = userService.uploadProfilePicture(userId, file);
-        ProfilePictureUploadResponse response = new ProfilePictureUploadResponse(
-                updatedUser.getProfilePictureUrl()
-        );
+        ProfilePictureUploadResponse response = userService.uploadProfilePicture(userId, file);
         return ResponseEntity.ok(response);
     }
 }

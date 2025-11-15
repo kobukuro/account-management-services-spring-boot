@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.peter.authnservice.domain.dto.ProcessedImage;
+import com.peter.authnservice.domain.dto.ProfilePictureUploadResponse;
 import com.peter.authnservice.domain.dto.TokenPair;
 import com.peter.authnservice.domain.dto.oauth.GoogleUserInfo;
 import com.peter.authnservice.domain.entity.AppUser;
@@ -475,7 +476,7 @@ public class UserServiceImpl implements UserService {
      * 6. If DB succeeds, best-effort cleanup of old S3 file
      */
     @Override
-    public AppUser uploadProfilePicture(UUID userId, MultipartFile file) {
+    public ProfilePictureUploadResponse uploadProfilePicture(UUID userId, MultipartFile file) {
         // Step 1: Validate user and permissions in read-only transaction
         validateUserForProfilePictureUpload(userId);
         String oldProfilePictureUrl = getOldProfilePictureUrl(userId);
@@ -507,9 +508,8 @@ public class UserServiceImpl implements UserService {
 
             // Step 4: Update database in separate transaction
             // Store the S3 key in the database (not a URL)
-            AppUser updatedUser;
             try {
-                updatedUser = updateUserProfilePictureUrlInTransaction(userId, uploadedKey);
+                updateUserProfilePictureUrlInTransaction(userId, uploadedKey);
             } catch (Exception dbException) {
                 // Step 5: Compensate - Delete the newly uploaded S3 file if DB update fails
                 logger.error("Database update failed for user {}, initiating S3 cleanup compensation", userId);
@@ -528,16 +528,14 @@ public class UserServiceImpl implements UserService {
 
             // Step 7: Generate presigned URL for the response (temporary access)
             // This URL will expire after the configured duration (e.g., 24 hours)
+            // Note: The database stores the S3 key, but we return a presigned URL to the client
             String presignedUrl = fileStorageService.generatePresignedUrl(
                     uploadedKey,
                     Duration.ofHours(presignedUrlExpirationHours)
             );
 
-            // Set the presigned URL in the response object for the client
-            // Note: The database stores the S3 key, but we return a presigned URL to the client
-            updatedUser.setProfilePictureUrl(presignedUrl);
-
-            return updatedUser;
+            // Return response DTO with presigned URL (entity in database remains unchanged with S3 key)
+            return new ProfilePictureUploadResponse(presignedUrl);
 
         } catch (IOException e) {
             throw new FileUploadException("Failed to process image file", e);
@@ -592,17 +590,16 @@ public class UserServiceImpl implements UserService {
      *
      * @param userId the user ID
      * @param s3Key the S3 object key (not a presigned URL) to store in the database
-     * @return the updated user entity
      */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    protected AppUser updateUserProfilePictureUrlInTransaction(UUID userId, String s3Key) {
+    protected void updateUserProfilePictureUrlInTransaction(UUID userId, String s3Key) {
         // Re-fetch user in this new transaction to avoid lost updates
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
         // Store the S3 key (not a presigned URL) in the database
         // Presigned URLs are generated on-demand when needed
         user.setProfilePictureUrl(s3Key);
-        return userRepository.save(user);
+        userRepository.save(user);
     }
 
     /**
