@@ -1,6 +1,7 @@
 package com.peter.authnservice.service;
 
 import com.peter.authnservice.domain.dto.ProcessedImage;
+import com.peter.authnservice.domain.dto.ProfilePictureUploadResponse;
 import com.peter.authnservice.domain.entity.AppUser;
 import com.peter.authnservice.domain.entity.AuthenticationType;
 import com.peter.authnservice.domain.entity.UserAuthentication;
@@ -332,10 +333,10 @@ public class UserServiceImplTest {
         when(fileStorageService.generatePresignedUrl(eq(s3Key), any(Duration.class))).thenReturn(expectedPresignedUrl);
         when(userRepository.save(any(AppUser.class))).thenReturn(user);
 
-        AppUser result = userService.uploadProfilePicture(userId, file);
+        ProfilePictureUploadResponse result = userService.uploadProfilePicture(userId, file);
 
         assertNotNull(result);
-        assertEquals(expectedPresignedUrl, user.getProfilePictureUrl());
+        assertEquals(expectedPresignedUrl, result.profilePictureUrl());
         verify(imageProcessingService).validateFileSize(file);
         verify(imageProcessingService).validateContentType(file);
         verify(imageProcessingService).validateFileExtension(anyString());
@@ -378,10 +379,10 @@ public class UserServiceImplTest {
         when(fileStorageService.generatePresignedUrl(eq(s3Key), any(Duration.class))).thenReturn(expectedPresignedUrl);
         when(userRepository.save(any(AppUser.class))).thenReturn(user);
 
-        AppUser result = userService.uploadProfilePicture(userId, file);
+        ProfilePictureUploadResponse result = userService.uploadProfilePicture(userId, file);
 
         assertNotNull(result);
-        assertEquals(expectedPresignedUrl, user.getProfilePictureUrl());
+        assertEquals(expectedPresignedUrl, result.profilePictureUrl());
         verify(fileStorageService).uploadFile(anyString(), any(), eq("image/png"), eq(100L));
         verify(userRepository).save(user);
     }
@@ -424,10 +425,10 @@ public class UserServiceImplTest {
         when(fileStorageService.generatePresignedUrl(eq(newS3Key), any(Duration.class))).thenReturn(expectedPresignedUrl);
         when(userRepository.save(any(AppUser.class))).thenReturn(user);
 
-        AppUser result = userService.uploadProfilePicture(userId, file);
+        ProfilePictureUploadResponse result = userService.uploadProfilePicture(userId, file);
 
         assertNotNull(result);
-        assertEquals(expectedPresignedUrl, user.getProfilePictureUrl());
+        assertEquals(expectedPresignedUrl, result.profilePictureUrl());
         verify(fileStorageService).extractKeyFromUrl(oldPictureUrl);
         verify(fileStorageService).deleteFile(oldKey);
         verify(fileStorageService).uploadFile(anyString(), any(), eq("image/png"), eq(100L));
@@ -522,10 +523,10 @@ public class UserServiceImplTest {
         when(userRepository.save(any(AppUser.class))).thenReturn(user);
 
         // Should NOT throw exception - deletion failure should be logged but not fail the upload
-        AppUser result = userService.uploadProfilePicture(userId, file);
+        ProfilePictureUploadResponse result = userService.uploadProfilePicture(userId, file);
 
         assertNotNull(result);
-        assertEquals(expectedPresignedUrl, user.getProfilePictureUrl());
+        assertEquals(expectedPresignedUrl, result.profilePictureUrl());
         verify(fileStorageService).extractKeyFromUrl(oldPictureUrl);
         verify(fileStorageService).deleteFile(oldKey); // Attempted deletion
         verify(fileStorageService).uploadFile(anyString(), any(), eq("image/png"), eq(100L)); // Upload still succeeded
@@ -607,10 +608,10 @@ public class UserServiceImplTest {
         when(fileStorageService.generatePresignedUrl(eq(s3Key), any(Duration.class))).thenReturn(expectedPresignedUrl);
         when(userRepository.save(any(AppUser.class))).thenReturn(user);
 
-        AppUser result = userService.uploadProfilePicture(userId, file);
+        ProfilePictureUploadResponse result = userService.uploadProfilePicture(userId, file);
 
         assertNotNull(result);
-        assertEquals(expectedPresignedUrl, user.getProfilePictureUrl());
+        assertEquals(expectedPresignedUrl, result.profilePictureUrl());
         verify(fileStorageService).uploadFile(anyString(), any(), eq("image/png"), eq(100L));
         verify(userRepository).save(user);
     }
@@ -649,10 +650,10 @@ public class UserServiceImplTest {
         when(fileStorageService.generatePresignedUrl(eq(s3Key), any(Duration.class))).thenReturn(expectedPresignedUrl);
         when(userRepository.save(any(AppUser.class))).thenReturn(user);
 
-        AppUser result = userService.uploadProfilePicture(userId, file);
+        ProfilePictureUploadResponse result = userService.uploadProfilePicture(userId, file);
 
         assertNotNull(result);
-        assertEquals(expectedPresignedUrl, user.getProfilePictureUrl());
+        assertEquals(expectedPresignedUrl, result.profilePictureUrl());
         // Verify extractKeyFromUrl was NOT called since URL is empty
         verify(fileStorageService, never()).extractKeyFromUrl(anyString());
         verify(fileStorageService, never()).deleteFile(anyString());
@@ -696,10 +697,10 @@ public class UserServiceImplTest {
         when(fileStorageService.generatePresignedUrl(eq(newS3Key), any(Duration.class))).thenReturn(expectedPresignedUrl);
         when(userRepository.save(any(AppUser.class))).thenReturn(user);
 
-        AppUser result = userService.uploadProfilePicture(userId, file);
+        ProfilePictureUploadResponse result = userService.uploadProfilePicture(userId, file);
 
         assertNotNull(result);
-        assertEquals(expectedPresignedUrl, user.getProfilePictureUrl());
+        assertEquals(expectedPresignedUrl, result.profilePictureUrl());
         verify(fileStorageService).extractKeyFromUrl(oldPictureUrl);
         // Verify deleteFile was NOT called since extractKeyFromUrl returned null
         verify(fileStorageService, never()).deleteFile(anyString());
