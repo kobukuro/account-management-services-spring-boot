@@ -7,8 +7,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.util.ReflectionTestUtils;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -30,7 +28,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-@ActiveProfiles("ci")
 class S3FileStorageServiceTest {
 
     @Mock
@@ -41,11 +38,8 @@ class S3FileStorageServiceTest {
 
     private S3FileStorageService s3FileStorageService;
 
-    @Value("${aws.s3.bucket-name}")
-    private String BUCKET_NAME = "test-bucket";
-
-    @Value("${aws.s3.region}")
-    private String REGION = "us-east-1";
+    private final String BUCKET_NAME = "test-bucket";
+    private final String REGION = "us-east-1";
 
     @BeforeEach
     void setUp() {
