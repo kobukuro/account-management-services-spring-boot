@@ -54,6 +54,9 @@ aws:
   s3:
     region: ${AWS_S3_REGION}
     bucket-name: ${AWS_S3_BUCKET_NAME}
+    endpoint: ${AWS_S3_ENDPOINT:}  # Optional: set to http://localhost:4566 for LocalStack
+    access-key-id: ${AWS_ACCESS_KEY_ID:}  # Optional: for LocalStack, use "test"
+    secret-access-key: ${AWS_SECRET_ACCESS_KEY:}  # Optional: for LocalStack, use "test"
 
 file:
   upload:
