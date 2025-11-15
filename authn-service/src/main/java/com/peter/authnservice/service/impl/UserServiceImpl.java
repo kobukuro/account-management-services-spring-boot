@@ -3,6 +3,8 @@ package com.peter.authnservice.service.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.peter.authnservice.domain.dto.ProcessedImage;
+import com.peter.authnservice.domain.dto.ProfilePictureUploadResponse;
 import com.peter.authnservice.domain.dto.TokenPair;
 import com.peter.authnservice.domain.dto.oauth.GoogleUserInfo;
 import com.peter.authnservice.domain.entity.AppUser;
@@ -12,22 +14,30 @@ import com.peter.authnservice.domain.event.*;
 import com.peter.authnservice.exception.*;
 import com.peter.authnservice.repository.UserAuthenticationRepository;
 import com.peter.authnservice.repository.UserRepository;
+import com.peter.authnservice.service.ImageProcessingService;
 import com.peter.authnservice.service.UserService;
+import com.peter.authnservice.service.FileStorageService;
 import com.peter.authnservice.util.JwtUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -38,9 +48,12 @@ import static com.peter.authnservice.domain.entity.UserAuthentication.createOAut
 @Service
 @Transactional // Utilize Spring's transaction management to roll back the transaction if an exception occurs
 public class UserServiceImpl implements UserService {
+    private static final Logger logger = LoggerFactory.getLogger(UserServiceImpl.class);
     private final UserRepository userRepository;
     private final UserAuthenticationRepository userAuthenticationRepository;
     private final JwtUtils jwtUtils;
+    private final FileStorageService fileStorageService;
+    private final ImageProcessingService imageProcessingService;
     @Value("${app-name}")
     private String appName;
     @Value("${jwt.verification.expiration}")
@@ -49,6 +62,8 @@ public class UserServiceImpl implements UserService {
     private long resetPasswordTokenExpirationInMilliseconds;
     @Value("${frontend-url}")
     private String frontendUrl;
+    @Value("${file.storage.presigned-url-expiration-hours:24}")
+    private int presignedUrlExpirationHours;
     private final KafkaTemplate<String, Event> kafkaTemplate;
 
     private final RestTemplate restTemplate;
@@ -61,12 +76,16 @@ public class UserServiceImpl implements UserService {
                            UserAuthenticationRepository userAuthenticationRepository,
                            JwtUtils jwtUtils,
                            KafkaTemplate<String, Event> kafkaTemplate,
-                           RestTemplate restTemplate) {
+                           RestTemplate restTemplate,
+                           FileStorageService fileStorageService,
+                           ImageProcessingService imageProcessingService) {
         this.userRepository = userRepository;
         this.userAuthenticationRepository = userAuthenticationRepository;
         this.jwtUtils = jwtUtils;
         this.kafkaTemplate = kafkaTemplate;
         this.restTemplate = restTemplate;
+        this.fileStorageService = fileStorageService;
+        this.imageProcessingService = imageProcessingService;
     }
 
     @Override
@@ -440,5 +459,163 @@ public class UserServiceImpl implements UserService {
         }
 
         return userRepository.save(user);
+    }
+
+    /**
+     * Upload profile picture for a user.
+     * This method is intentionally NOT annotated with @Transactional to handle
+     * the transaction boundaries explicitly. This allows proper handling of
+     * S3 operations (which cannot be rolled back) and database operations.
+     * <p>
+     * Flow:
+     * 1. Validate user and permissions (read-only transaction)
+     * 2. Validate and process image file (no DB/S3 operations)
+     * 3. Upload to S3 first (easier to clean up if DB fails)
+     * 4. Update database in separate transaction (atomic)
+     * 5. If DB fails, compensate by deleting the uploaded S3 file
+     * 6. If DB succeeds, best-effort cleanup of old S3 file
+     */
+    @Override
+    public ProfilePictureUploadResponse uploadProfilePicture(UUID userId, MultipartFile file) {
+        // Step 1: Validate user and permissions in read-only transaction
+        validateUserForProfilePictureUpload(userId);
+        String oldProfilePictureKey = getOldProfilePictureKey(userId);
+
+        try {
+            // Step 2: Validate and process file (no DB or S3 operations)
+            // Read file bytes once to avoid stream exhaustion
+            byte[] fileBytes = file.getBytes();
+            
+            imageProcessingService.validateFileSize(file);
+            imageProcessingService.validateContentType(file);
+            imageProcessingService.validateFileExtension(file.getOriginalFilename());
+            imageProcessingService.validateMagicNumber(fileBytes);
+
+            ProcessedImage processedImage = imageProcessingService.processImage(fileBytes);
+
+            // Step 3: Upload to S3 first (before DB update)
+            String fileExtension = ".png"; // We're converting to PNG
+            String fileName = UUID.randomUUID() + fileExtension;
+            String s3Key = String.format("profile-pictures/%s/%s", userId, fileName);
+
+            // Upload returns the S3 key (not a public URL - file is private)
+            String uploadedKey = fileStorageService.uploadFile(
+                    s3Key,
+                    processedImage.inputStream(),
+                    processedImage.contentType(),
+                    processedImage.size()
+            );
+
+            // Step 4: Update database in separate transaction
+            // Store the S3 key in the database (not a URL)
+            try {
+                updateUserProfilePictureKeyInTransaction(userId, uploadedKey);
+            } catch (Exception dbException) {
+                // Step 5: Compensate - Delete the newly uploaded S3 file if DB update fails
+                logger.error("Database update failed for user {}, initiating S3 cleanup compensation", userId);
+                try {
+                    fileStorageService.deleteFile(s3Key);
+                    logger.info("Successfully deleted S3 file {} after database failure", s3Key);
+                } catch (Exception s3CleanupException) {
+                    logger.error("Failed to clean up S3 file {} after database failure for user {}: {}",
+                            s3Key, userId, s3CleanupException.getMessage(), s3CleanupException);
+                }
+                throw new FileUploadException("Failed to save profile picture URL to database", dbException);
+            }
+
+            // Step 6: Best-effort cleanup of old file (after successful DB update)
+            deleteOldProfilePicture(oldProfilePictureKey, userId);
+
+            // Step 7: Generate presigned URL for the response (temporary access)
+            // This URL will expire after the configured duration (e.g., 24 hours)
+            // Note: The database stores the S3 key, but we return a presigned URL to the client
+            String presignedUrl = fileStorageService.generatePresignedUrl(
+                    uploadedKey,
+                    Duration.ofHours(presignedUrlExpirationHours)
+            );
+
+            // Return response DTO with presigned URL (entity in database remains unchanged with S3 key)
+            return new ProfilePictureUploadResponse(presignedUrl);
+
+        } catch (IOException e) {
+            throw new FileUploadException("Failed to process image file", e);
+        } catch (IllegalArgumentException e) {
+            throw e; // Re-throw validation exceptions
+        } catch (FileUploadException e) {
+            throw e; // Re-throw file upload exceptions
+        } catch (Exception e) {
+            throw new FileUploadException("Failed to upload profile picture: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Validate user exists, is enabled, and has verified email if using LOCAL auth.
+     * This runs in a read-only transaction.
+     */
+    @Transactional(readOnly = true)
+    protected void validateUserForProfilePictureUpload(UUID userId) {
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (!user.getEnabled()) {
+            throw new UserAccountDisabledException("User account is disabled.");
+        }
+
+        // Check if user only has LOCAL authentication and it's not verified
+        var userAuths = userAuthenticationRepository.findAllByUserId(userId);
+        boolean hasOnlyLocalAuth = userAuths.size() == 1 &&
+                                    userAuths.getFirst().getType() == AuthenticationType.LOCAL;
+
+        if (hasOnlyLocalAuth && !userAuths.getFirst().getEnabled()) {
+            throw new EmailNotVerifiedException("Email verification required to upload profile picture.");
+        }
+    }
+
+    /**
+     * Get the current profile picture key for cleanup purposes.
+     * This runs in a read-only transaction.
+     */
+    @Transactional(readOnly = true)
+    protected String getOldProfilePictureKey(UUID userId) {
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        return user.getProfilePictureKey();
+    }
+
+    /**
+     * Update user's profile picture storage key in the database.
+     * This runs in a NEW transaction to ensure atomicity and avoid lost updates.
+     * The user is re-fetched within this transaction to ensure we're working with
+     * the latest state and avoid overwriting concurrent updates to other fields.
+     *
+     * @param userId the user ID
+     * @param storageKey the storage key (e.g., S3 object key) to store in the database
+     */
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    protected void updateUserProfilePictureKeyInTransaction(UUID userId, String storageKey) {
+        // Re-fetch user in this new transaction to avoid lost updates
+        AppUser user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        // Store the storage key (not a presigned URL) in the database
+        // Presigned URLs are generated on-demand when needed
+        user.setProfilePictureKey(storageKey);
+        userRepository.save(user);
+    }
+
+    /**
+     * Delete old profile picture from storage.
+     * This is a best-effort operation - failures are logged but don't fail the upload.
+     */
+    protected void deleteOldProfilePicture(String oldProfilePictureKey, UUID userId) {
+        if (oldProfilePictureKey != null && !oldProfilePictureKey.isEmpty()) {
+            try {
+                fileStorageService.deleteFile(oldProfilePictureKey);
+                logger.info("Successfully deleted old profile picture {} for user {}", oldProfilePictureKey, userId);
+            } catch (Exception e) {
+                // Log but don't fail if old file deletion fails
+                logger.warn("Failed to delete old profile picture {} for user {}: {}",
+                        oldProfilePictureKey, userId, e.getMessage(), e);
+            }
+        }
     }
 }

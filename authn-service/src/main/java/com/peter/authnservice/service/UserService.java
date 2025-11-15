@@ -1,7 +1,9 @@
 package com.peter.authnservice.service;
 
+import com.peter.authnservice.domain.dto.ProfilePictureUploadResponse;
 import com.peter.authnservice.domain.dto.TokenPair;
 import com.peter.authnservice.domain.entity.AppUser;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.UUID;
 
@@ -25,4 +27,6 @@ public interface UserService {
     TokenPair googleOAuthLogin(String authorizationCode, String redirectUri);
 
     AppUser updateProfile(UUID userId, String firstName, String lastName);
+
+    ProfilePictureUploadResponse uploadProfilePicture(UUID userId, MultipartFile file);
 }

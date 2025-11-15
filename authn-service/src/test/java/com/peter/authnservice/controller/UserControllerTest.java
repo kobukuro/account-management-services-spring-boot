@@ -9,10 +9,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.ZonedDateTime;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -63,5 +66,23 @@ public class UserControllerTest {
 
         // Verify that null is passed as userId
         verify(userService).updateProfile(isNull(), eq("NewFirstName"), eq("NewLastName"));
+    }
+
+    /**
+     * Test uploadProfilePicture when authentication.getName() returns null
+     * Should throw AuthenticationCredentialsNotFoundException
+     */
+    @Test
+    void whenAuthenticationNameIsNullInUploadProfilePicture_thenThrowsException() {
+        Authentication authentication = mock(Authentication.class);
+        when(authentication.getName()).thenReturn(null);
+
+        MultipartFile mockFile = mock(MultipartFile.class);
+
+        // Expect AuthenticationCredentialsNotFoundException to be thrown
+        assertThrows(AuthenticationCredentialsNotFoundException.class, () -> userController.uploadProfilePicture(authentication, mockFile));
+
+        // Verify that the service method is never called
+        verify(userService, never()).uploadProfilePicture(any(), any());
     }
 }

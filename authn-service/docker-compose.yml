@@ -36,6 +36,19 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - kafka_data:/var/lib/kafka/data
+  localstack:
+    image: localstack/localstack:latest
+    container_name: localstack
+    ports:
+      - "4566:4566"  # LocalStack Gateway
+    environment:
+      - SERVICES=s3
+      - DEBUG=0
+      - PERSISTENCE=1
+      - SKIP_SSL_CERT_DOWNLOAD=1
+    volumes:
+      - localstack_data:/var/lib/localstack
 volumes:
   postgres-data:
   kafka_data:
+  localstack_data:
