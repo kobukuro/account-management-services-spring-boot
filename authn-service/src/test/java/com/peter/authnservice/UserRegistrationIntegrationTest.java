@@ -1,6 +1,7 @@
 package com.peter.authnservice;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.peter.authnservice.config.KafkaTopicConfig;
 import com.peter.authnservice.domain.dto.ActivationEmailResendRequest;
 import com.peter.authnservice.domain.dto.UserActivationRequest;
 import com.peter.authnservice.domain.dto.UserRegistrationRequest;
@@ -46,6 +47,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("ci")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class UserRegistrationIntegrationTest {
 
     private static final String REGISTER_API_PATH = "/api/v1/users";
@@ -70,7 +72,10 @@ public class UserRegistrationIntegrationTest {
     @Autowired
     private Flyway flyway;
 
-    private static Consumer<String, Event> consumer;
+    @Autowired
+    private KafkaTopicConfig kafkaTopicConfig;
+
+    private Consumer<String, Event> consumer;
 
     private final String firstName = "John";
     private final String lastName = "Doe";
@@ -89,7 +94,7 @@ public class UserRegistrationIntegrationTest {
     private int maxKafkaPollIterations;
 
     @BeforeAll
-    static void setupKafkaConsumer() {
+    void setupKafkaConsumer() {
         Map<String, Object> consumerProps = new HashMap<>();
         consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group");
@@ -104,7 +109,7 @@ public class UserRegistrationIntegrationTest {
                         new JsonDeserializer<>(Event.class, false));
 
         consumer = consumerFactory.createConsumer();
-        consumer.subscribe(Arrays.asList("user_registration", "resend_activation"));
+        consumer.subscribe(Arrays.asList(kafkaTopicConfig.userRegistration(), kafkaTopicConfig.resendActivation()));
     }
 
     @BeforeEach
@@ -128,7 +133,7 @@ public class UserRegistrationIntegrationTest {
     }
 
     @AfterAll
-    static void tearDown() {
+    void tearDown() {
         if (consumer != null) {
             consumer.close();
         }

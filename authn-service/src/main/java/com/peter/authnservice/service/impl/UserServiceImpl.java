@@ -3,6 +3,7 @@ package com.peter.authnservice.service.impl;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.peter.authnservice.config.KafkaTopicConfig;
 import com.peter.authnservice.domain.dto.ProcessedImage;
 import com.peter.authnservice.domain.dto.ProfilePictureUploadResponse;
 import com.peter.authnservice.domain.dto.TokenPair;
@@ -54,6 +55,7 @@ public class UserServiceImpl implements UserService {
     private final JwtUtils jwtUtils;
     private final FileStorageService fileStorageService;
     private final ImageProcessingService imageProcessingService;
+    private final KafkaTopicConfig kafkaTopicConfig;
     @Value("${app-name}")
     private String appName;
     @Value("${jwt.verification.expiration}")
@@ -78,7 +80,8 @@ public class UserServiceImpl implements UserService {
                            KafkaTemplate<String, Event> kafkaTemplate,
                            RestTemplate restTemplate,
                            FileStorageService fileStorageService,
-                           ImageProcessingService imageProcessingService) {
+                           ImageProcessingService imageProcessingService,
+                           KafkaTopicConfig kafkaTopicConfig) {
         this.userRepository = userRepository;
         this.userAuthenticationRepository = userAuthenticationRepository;
         this.jwtUtils = jwtUtils;
@@ -86,6 +89,7 @@ public class UserServiceImpl implements UserService {
         this.restTemplate = restTemplate;
         this.fileStorageService = fileStorageService;
         this.imageProcessingService = imageProcessingService;
+        this.kafkaTopicConfig = kafkaTopicConfig;
     }
 
     @Override
@@ -109,7 +113,7 @@ public class UserServiceImpl implements UserService {
                         )
                 )
         );
-        kafkaTemplate.send("user_registration", Event);
+        kafkaTemplate.send(kafkaTopicConfig.userRegistration(), Event);
         String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
         AppUser newUser = new AppUser(userId, firstName, lastName, true);
         userRepository.save(newUser);
@@ -162,7 +166,7 @@ public class UserServiceImpl implements UserService {
                         )
                 )
         );
-        kafkaTemplate.send("resend_activation", resendActivationEvent);
+        kafkaTemplate.send(kafkaTopicConfig.resendActivation(), resendActivationEvent);
     }
 
     @Override
@@ -214,7 +218,7 @@ public class UserServiceImpl implements UserService {
                         )
                 )
         );
-        kafkaTemplate.send("password_reset", passwordResetEvent);
+        kafkaTemplate.send(kafkaTopicConfig.passwordReset(), passwordResetEvent);
     }
 
     @Override
@@ -253,7 +257,7 @@ public class UserServiceImpl implements UserService {
                         )
                 )
         );
-        kafkaTemplate.send("password_reset_confirm", passwordResetConfirmEvent);
+        kafkaTemplate.send(kafkaTopicConfig.passwordResetConfirm(), passwordResetConfirmEvent);
     }
 
     @Override
@@ -292,7 +296,7 @@ public class UserServiceImpl implements UserService {
                         )
                 )
         );
-        kafkaTemplate.send("password_change", passwordChangeEvent);
+        kafkaTemplate.send(kafkaTopicConfig.passwordChange(), passwordChangeEvent);
     }
 
     @Override
