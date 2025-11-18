@@ -1,6 +1,7 @@
 package com.peter.authnservice;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.peter.authnservice.config.KafkaTopicConfig;
 import com.peter.authnservice.domain.dto.PasswordResetConfirmRequest;
 import com.peter.authnservice.domain.dto.PasswordResetRequest;
 import com.peter.authnservice.domain.dto.UserRegistrationRequest;
@@ -47,6 +48,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("ci")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class UserResetPasswordIntegrationTest {
 
     private static final String RESET_PASSWORD_API_PATH = "/api/v1/users/reset-password";
@@ -71,7 +73,10 @@ public class UserResetPasswordIntegrationTest {
     @Autowired
     private Flyway flyway;
 
-    private static Consumer<String, Event> consumer;
+    @Autowired
+    private KafkaTopicConfig kafkaTopicConfig;
+
+    private Consumer<String, Event> consumer;
 
     private final String firstName = "Jane";
     private final String lastName = "Smith";
@@ -90,7 +95,7 @@ public class UserResetPasswordIntegrationTest {
     private int maxKafkaPollIterations;
 
     @BeforeAll
-    static void setupKafkaConsumer() {
+    void setupKafkaConsumer() {
         Map<String, Object> consumerProps = new HashMap<>();
         consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group");
@@ -105,7 +110,7 @@ public class UserResetPasswordIntegrationTest {
                         new JsonDeserializer<>(Event.class, false));
 
         consumer = consumerFactory.createConsumer();
-        consumer.subscribe(Arrays.asList("password_reset", "password_reset_confirm"));
+        consumer.subscribe(Arrays.asList(kafkaTopicConfig.passwordReset(), kafkaTopicConfig.passwordResetConfirm()));
     }
 
     @BeforeEach
@@ -129,7 +134,7 @@ public class UserResetPasswordIntegrationTest {
     }
 
     @AfterAll
-    static void tearDown() {
+    void tearDown() {
         if (consumer != null) {
             consumer.close();
         }

@@ -62,3 +62,11 @@ file:
       max-height: ${FILE_UPLOAD_PROFILE_PICTURE_MAX_HEIGHT:400}
   storage:
     presigned-url-expiration-hours: ${FILE_STORAGE_PRESIGNED_URL_EXPIRATION_HOURS:24}
+
+kafka:
+  topics:
+    user-registration: user_registration
+    resend-activation: resend_activation
+    password-reset: password_reset
+    password-reset-confirm: password_reset_confirm
+    password-change: password_change

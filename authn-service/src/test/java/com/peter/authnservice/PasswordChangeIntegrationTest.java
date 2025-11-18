@@ -3,6 +3,7 @@ package com.peter.authnservice;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.peter.authnservice.config.KafkaTopicConfig;
 import com.peter.authnservice.domain.dto.PasswordChangeRequest;
 import com.peter.authnservice.domain.entity.AppUser;
 import com.peter.authnservice.domain.entity.AuthenticationType;
@@ -42,10 +43,10 @@ import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @AutoConfigureMockMvc
 @ActiveProfiles("ci")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class PasswordChangeIntegrationTest {
 
     private static final String CHANGE_PASSWORD_API_PATH = "/api/v1/users/change-password";
-    private static final String KAFKA_TOPIC = "password_change";
 
     @Autowired
     private MockMvc mockMvc;
@@ -65,7 +66,10 @@ public class PasswordChangeIntegrationTest {
     @Autowired
     private Flyway flyway;
 
-    private static Consumer<String, Event> consumer;
+    @Autowired
+    private KafkaTopicConfig kafkaTopicConfig;
+
+    private Consumer<String, Event> consumer;
 
     private final String firstName = "John";
     private final String lastName = "Doe";
@@ -83,7 +87,7 @@ public class PasswordChangeIntegrationTest {
     private String secretKey;
 
     @BeforeAll
-    static void setupKafkaConsumer() {
+    void setupKafkaConsumer() {
         Map<String, Object> consumerProps = new HashMap<>();
         consumerProps.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, "localhost:9092");
         consumerProps.put(ConsumerConfig.GROUP_ID_CONFIG, "test-group-password-change");
@@ -98,7 +102,7 @@ public class PasswordChangeIntegrationTest {
                         new JsonDeserializer<>(Event.class, false));
 
         consumer = consumerFactory.createConsumer();
-        consumer.subscribe(Collections.singletonList(KAFKA_TOPIC));
+        consumer.subscribe(Collections.singletonList(kafkaTopicConfig.passwordChange()));
     }
 
     @BeforeEach
@@ -122,7 +126,7 @@ public class PasswordChangeIntegrationTest {
     }
 
     @AfterAll
-    static void tearDown() {
+    void tearDown() {
         if (consumer != null) {
             consumer.close();
         }
