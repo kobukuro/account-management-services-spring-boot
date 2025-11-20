@@ -20,6 +20,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    env:
+      KAFKA_TOPIC_USER_REGISTRATION: user_registration
+      KAFKA_TOPIC_RESEND_ACTIVATION: resend_activation
+      KAFKA_TOPIC_PASSWORD_RESET: password_reset
+      KAFKA_TOPIC_PASSWORD_RESET_CONFIRM: password_reset_confirm
+      KAFKA_TOPIC_PASSWORD_CHANGE: password_change
+
     defaults:
       run:
         working-directory: ./notification-service
@@ -60,11 +67,11 @@ jobs:
 
           # Create topics explicitly
           echo "Creating Kafka topics..."
-          docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic user_registration --partitions 1 --replication-factor 1
-          docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic resend_activation --partitions 1 --replication-factor 1
-          docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic password_reset --partitions 1 --replication-factor 1
-          docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic password_reset_confirm --partitions 1 --replication-factor 1
-          docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic password_change --partitions 1 --replication-factor 1
+          docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic $KAFKA_TOPIC_USER_REGISTRATION --partitions 1 --replication-factor 1
+          docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic $KAFKA_TOPIC_RESEND_ACTIVATION --partitions 1 --replication-factor 1
+          docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic $KAFKA_TOPIC_PASSWORD_RESET --partitions 1 --replication-factor 1
+          docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic $KAFKA_TOPIC_PASSWORD_RESET_CONFIRM --partitions 1 --replication-factor 1
+          docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --create --if-not-exists --topic $KAFKA_TOPIC_PASSWORD_CHANGE --partitions 1 --replication-factor 1
 
           echo "Topics created successfully!"
           docker compose -f docker-compose-ci.yml exec -T kafka kafka-topics --bootstrap-server localhost:9092 --list

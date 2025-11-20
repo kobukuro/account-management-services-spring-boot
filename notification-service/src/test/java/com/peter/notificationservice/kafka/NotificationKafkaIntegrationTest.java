@@ -1,5 +1,6 @@
 package com.peter.notificationservice.kafka;
 
+import com.peter.notificationservice.config.KafkaTopicConfig;
 import com.peter.notificationservice.domain.event.Email;
 import com.peter.notificationservice.domain.event.Event;
 import com.peter.notificationservice.domain.event.UserDetails;
@@ -33,6 +34,9 @@ class NotificationKafkaIntegrationTest {
     @Autowired
     private KafkaTemplate<String, Event> kafkaTemplate;
 
+    @Autowired
+    private KafkaTopicConfig kafkaTopicConfig;
+
     @MockitoBean
     private EmailService emailService;
 
@@ -59,7 +63,7 @@ class NotificationKafkaIntegrationTest {
         Event event = new Event(userDetails, email);
 
         // When
-        kafkaTemplate.send("user_registration", event);
+        kafkaTemplate.send(kafkaTopicConfig.userRegistration(), event);
 
         // Then
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
@@ -93,7 +97,7 @@ class NotificationKafkaIntegrationTest {
         Event event = new Event(userDetails, email);
 
         // When
-        kafkaTemplate.send("password_reset", event);
+        kafkaTemplate.send(kafkaTopicConfig.passwordReset(), event);
 
         // Then
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
@@ -124,7 +128,7 @@ class NotificationKafkaIntegrationTest {
         Event event = new Event(userDetails, email);
 
         // When
-        kafkaTemplate.send("password_reset_confirm", event);
+        kafkaTemplate.send(kafkaTopicConfig.passwordResetConfirm(), event);
 
         // Then
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
@@ -154,7 +158,7 @@ class NotificationKafkaIntegrationTest {
         Event event = new Event(userDetails, email);
 
         // When
-        kafkaTemplate.send("password_change", event);
+        kafkaTemplate.send(kafkaTopicConfig.passwordChange(), event);
 
         // Then
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
@@ -186,7 +190,7 @@ class NotificationKafkaIntegrationTest {
         Event event = new Event(userDetails, email);
 
         // When
-        kafkaTemplate.send("resend_activation", event);
+        kafkaTemplate.send(kafkaTopicConfig.resendActivation(), event);
 
         // Then
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->
@@ -243,9 +247,9 @@ class NotificationKafkaIntegrationTest {
         Event event3 = new Event(userDetails3, email3);
 
         // When - Send multiple events to different topics
-        kafkaTemplate.send("user_registration", event1);
-        kafkaTemplate.send("password_reset", event2);
-        kafkaTemplate.send("password_change", event3);
+        kafkaTemplate.send(kafkaTopicConfig.userRegistration(), event1);
+        kafkaTemplate.send(kafkaTopicConfig.passwordReset(), event2);
+        kafkaTemplate.send(kafkaTopicConfig.passwordChange(), event3);
 
         // Then - Verify all events were processed
         await().atMost(10, TimeUnit.SECONDS).untilAsserted(() ->

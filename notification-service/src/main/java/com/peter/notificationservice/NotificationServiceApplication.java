@@ -7,6 +7,7 @@ import com.peter.notificationservice.service.NotificationService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.kafka.annotation.DltHandler;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.annotation.RetryableTopic;
@@ -14,6 +15,7 @@ import org.springframework.kafka.support.KafkaHeaders;
 import org.springframework.messaging.handler.annotation.Header;
 
 @SpringBootApplication
+@ConfigurationPropertiesScan
 @Slf4j
 public class NotificationServiceApplication {
     private final NotificationService notificationService;
@@ -27,7 +29,13 @@ public class NotificationServiceApplication {
     }
 
     @RetryableTopic
-    @KafkaListener(topics = {"user_registration", "password_reset", "password_reset_confirm", "password_change", "resend_activation"})
+    @KafkaListener(topics = {
+            "${kafka.topics.user-registration}",
+            "${kafka.topics.resend-activation}",
+            "${kafka.topics.password-reset}",
+            "${kafka.topics.password-reset-confirm}",
+            "${kafka.topics.password-change}"
+    })
     public void handleNotification(Event event, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic, @Header(KafkaHeaders.OFFSET) long offset) throws JsonProcessingException {
         log.info("Received: {} from {} offset {}", new ObjectMapper().writeValueAsString(event), topic, offset);
         notificationService.processNotification(event);
