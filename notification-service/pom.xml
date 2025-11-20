@@ -31,11 +31,10 @@
     </properties>
     <dependencyManagement>
         <dependencies>
-            <!-- Override commons-io version to fix CVE-2024-47554 -->
             <dependency>
                 <groupId>commons-io</groupId>
                 <artifactId>commons-io</artifactId>
-                <version>2.18.0</version>
+                <version>2.21.0</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
