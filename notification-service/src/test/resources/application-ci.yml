@@ -17,3 +17,11 @@ spring:
           auth: false
           starttls:
             enable: false
+
+kafka:
+  topics:
+    user-registration: user_registration
+    resend-activation: resend_activation
+    password-reset: password_reset
+    password-reset-confirm: password_reset_confirm
+    password-change: password_change
