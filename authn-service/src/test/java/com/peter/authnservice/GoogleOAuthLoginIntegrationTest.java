@@ -118,7 +118,7 @@ public class GoogleOAuthLoginIntegrationTest {
         AppUser user = userAuth.get().getUser();
         assertEquals(firstName, user.getFirstName());
         assertEquals(lastName, user.getLastName());
-        assertTrue(user.getEnabled());
+        assertTrue(user.isEnabled());
 
         // Verify JWT contains correct user ID
         UUID userIdFromToken = jwtUtils.getUserIdFromToken(accessToken);
