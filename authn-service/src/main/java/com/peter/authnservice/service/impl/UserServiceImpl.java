@@ -145,7 +145,7 @@ public class UserServiceImpl implements UserService {
         UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(email, AuthenticationType.LOCAL)
                 .orElseThrow(() -> new EmailNotFoundException("Email not found"));
         AppUser user = userAuth.getUser();
-        if (!user.getEnabled()) {
+        if (!user.isEnabled()) {
             throw new UserAccountDisabledException("User account is disabled.");
         }
         if (userAuth.getEnabled()) {
@@ -175,7 +175,7 @@ public class UserServiceImpl implements UserService {
                 .orElseThrow(() -> new InvalidCredentialsException("Invalid credentials"));
 
         AppUser user = userAuth.getUser();
-        if (!user.getEnabled()) {
+        if (!user.isEnabled()) {
             throw new UserAccountDisabledException("User account is disabled.");
         }
 
@@ -197,7 +197,7 @@ public class UserServiceImpl implements UserService {
         UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(email, AuthenticationType.LOCAL)
                 .orElseThrow(() -> new EmailNotFoundException("Email not found"));
         AppUser user = userAuth.getUser();
-        if (!user.getEnabled()) {
+        if (!user.isEnabled()) {
             throw new UserAccountDisabledException("User account is disabled.");
         }
         if (!userAuth.getEnabled()) {
@@ -230,7 +230,7 @@ public class UserServiceImpl implements UserService {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        if (!user.getEnabled()) {
+        if (!user.isEnabled()) {
             throw new UserAccountDisabledException("User account is disabled.");
         }
 
@@ -265,7 +265,7 @@ public class UserServiceImpl implements UserService {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new TokenNotValidException("Invalid or expired token"));
 
-        if (!user.getEnabled()) {
+        if (!user.isEnabled()) {
             throw new UserAccountDisabledException("User account is disabled.");
         }
 
@@ -310,7 +310,7 @@ public class UserServiceImpl implements UserService {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new TokenNotValidException("Invalid or expired refresh token"));
 
-        if (!user.getEnabled()) {
+        if (!user.isEnabled()) {
             throw new UserAccountDisabledException("User account is disabled.");
         }
 
@@ -442,7 +442,7 @@ public class UserServiceImpl implements UserService {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        if (!user.getEnabled()) {
+        if (!user.isEnabled()) {
             throw new UserAccountDisabledException("User account is disabled.");
         }
 
@@ -561,7 +561,7 @@ public class UserServiceImpl implements UserService {
         AppUser user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        if (!user.getEnabled()) {
+        if (!user.isEnabled()) {
             throw new UserAccountDisabledException("User account is disabled.");
         }
 

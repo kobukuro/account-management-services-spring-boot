@@ -110,7 +110,7 @@ class CustomUserDetailsServiceTest {
 
         assertNotNull(userDetails);
         assertEquals(disabledUser, userDetails);
-        assertFalse(((AppUser) userDetails).getEnabled());
+        assertFalse(userDetails.isEnabled());
         verify(userRepository, times(1)).findById(testUserId);
     }
 }
