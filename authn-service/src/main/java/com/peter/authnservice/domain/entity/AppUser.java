@@ -25,7 +25,7 @@ public class AppUser implements UserDetails {
     private String profilePictureKey;
 
     @Column(nullable = false)
-    private Boolean enabled = false;
+    private boolean enabled = false;
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<UserAuthentication> authentications = new ArrayList<>();
@@ -38,7 +38,7 @@ public class AppUser implements UserDetails {
     @Column(nullable = false)
     private ZonedDateTime lastUpdatedAt;
 
-    public AppUser(UUID id, String firstName, String lastName, Boolean enabled) {
+    public AppUser(UUID id, String firstName, String lastName, boolean enabled) {
         this.id = id;
         this.firstName = firstName;
         this.lastName = lastName;
