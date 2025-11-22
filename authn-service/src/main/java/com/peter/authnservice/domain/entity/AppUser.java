@@ -45,7 +45,7 @@ public class AppUser implements UserDetails {
         this.enabled = enabled;
     }
 
-    public AppUser(String firstName, String lastName, Boolean enabled) {
+    public AppUser(String firstName, String lastName, boolean enabled) {
         this.id = UUID.randomUUID(); // Generate a new UUID for the user
         this.firstName = firstName;
         this.lastName = lastName;
