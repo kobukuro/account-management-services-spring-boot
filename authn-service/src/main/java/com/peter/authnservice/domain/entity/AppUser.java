@@ -70,4 +70,9 @@ public class AppUser implements UserDetails {
                 .map(UserAuthentication::getPassword)
                 .orElse(null);
     }
+
+    @Override
+    public boolean isEnabled() {
+        return enabled;
+    }
 }
