@@ -127,11 +127,6 @@ public class UserRegistrationIntegrationTest {
         } while (!records.isEmpty() && iteration < maxKafkaPollIterations);
     }
 
-    @AfterEach
-    void cleanup() {
-        userRepository.deleteAll();
-    }
-
     @AfterAll
     void tearDown() {
         if (consumer != null) {
