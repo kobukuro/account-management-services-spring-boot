@@ -32,7 +32,8 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_LOG_RETENTION_HOURS: 168
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
-      CLUSTER_ID: "1"
+      # KRaft cluster ID - generated via `kafka-storage random-uuid`
+      CLUSTER_ID: "tJjunm5nTDOkCqLR5JO6dw"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - kafka_data:/var/lib/kafka/data
