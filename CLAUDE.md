@@ -38,11 +38,14 @@ docker compose up -d  # Starts PostgreSQL + Kafka
 ```bash
 cd notification-service
 # Create .env file based on .env.sample
+# DO NOT run docker compose (use Kafka from authn-service)
 # Run NotificationServiceApplication from IDE or: ./mvnw spring-boot:run
 ```
 
 Access point:
 - http://localhost:8000/swagger-ui.html
+
+**Note**: For standalone notification-service development (without other services), you can run `docker compose up -d` to start its own Kafka instance. See [Kafka Usage Patterns](#kafka-usage-patterns) for details.
 
 ### Testing
 
@@ -252,12 +255,38 @@ Each service requires a `.env` file (see `.env.sample` in each service directory
 
 ### Docker Compose Files
 
-Each service has its own `docker-compose.yml` for local development:
+Each service has its own `docker-compose.yml` for local development, following microservices independence principles:
 - **api-gateway**: Redis only
 - **authn-service**: PostgreSQL + Kafka
-- **notification-service**: No containers (uses Kafka from authn-service)
+- **notification-service**: Kafka only (for standalone development)
 
 **authn-service** also has `docker-compose-ci.yml` for CI/test environment with separate test database.
+
+#### Kafka Usage Patterns
+
+Following microservices best practices, each service can be developed independently. However, when running the full stack, **only one Kafka instance should be used**:
+
+**Scenario 1: Standalone Service Development**
+```bash
+# Develop notification-service independently
+cd notification-service
+docker compose up -d        # Starts its own Kafka
+./mvnw spring-boot:run      # Connects to localhost:9092
+```
+
+**Scenario 2: Full Stack Development** (Recommended)
+```bash
+# 1. Start authn-service with infrastructure
+cd authn-service
+docker compose up -d        # Starts PostgreSQL + Kafka
+./mvnw spring-boot:run
+
+# 2. Start notification-service (no containers)
+cd notification-service
+./mvnw spring-boot:run      # Connects to authn-service's Kafka (localhost:9092)
+```
+
+**Important**: Both `authn-service/docker-compose.yml` and `notification-service/docker-compose.yml` define Kafka with the same `CLUSTER_ID` (`tJjunm5nTDOkCqLR5JO6dw`). This ensures consistency, but **do not start both Kafka containers simultaneously** as they use the same ports (9092, 9093) and container name.
 
 ## Project Structure
 
