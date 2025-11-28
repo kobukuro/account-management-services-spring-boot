@@ -65,7 +65,7 @@ public class AppUser implements UserDetails {
     @Override
     public String getPassword() {
         return authentications.stream()
-                .filter(auth -> auth.getType() == AuthenticationType.LOCAL && auth.getEnabled())
+                .filter(auth -> auth.getType() == AuthenticationType.LOCAL && auth.isEnabled())
                 .findFirst()
                 .map(UserAuthentication::getPassword)
                 .orElse(null);
