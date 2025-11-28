@@ -533,7 +533,7 @@ public class UserRegistrationIntegrationTest {
                         .content(objectMapper.writeValueAsString(activationRequest)))
                 .andExpect(status().isNoContent());
         UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).orElseThrow();
-        assertTrue(userAuth.getEnabled());
+        assertTrue(userAuth.isEnabled());
     }
 
     /**
@@ -554,7 +554,7 @@ public class UserRegistrationIntegrationTest {
                         .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isUnauthorized());
         UserAuthentication userAuth = userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).orElseThrow();
-        assertFalse(userAuth.getEnabled());
+        assertFalse(userAuth.isEnabled());
     }
 
     /**

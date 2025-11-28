@@ -133,7 +133,7 @@ public class UserServiceImpl implements UserService {
         UserAuthentication userAuth = userAuthenticationRepository.findByUserIdAndType(userId, AuthenticationType.LOCAL)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        if (userAuth.getEnabled()) {
+        if (userAuth.isEnabled()) {
             throw new UserAlreadyVerifiedException("This user has already been verified.");
         }
         userAuth.setEnabled(true);
@@ -148,7 +148,7 @@ public class UserServiceImpl implements UserService {
         if (!user.isEnabled()) {
             throw new UserAccountDisabledException("User account is disabled.");
         }
-        if (userAuth.getEnabled()) {
+        if (userAuth.isEnabled()) {
             throw new UserAlreadyVerifiedException("This user has already been verified.");
         }
         String firstName = user.getFirstName();
@@ -179,7 +179,7 @@ public class UserServiceImpl implements UserService {
             throw new UserAccountDisabledException("User account is disabled.");
         }
 
-        if (!userAuth.getEnabled()) {
+        if (!userAuth.isEnabled()) {
             throw new EmailNotVerifiedException("This email has not been verified.\nPlease check your email for the verification link.");
         }
         if (!BCrypt.checkpw(password, userAuth.getPassword())) {
@@ -200,7 +200,7 @@ public class UserServiceImpl implements UserService {
         if (!user.isEnabled()) {
             throw new UserAccountDisabledException("User account is disabled.");
         }
-        if (!userAuth.getEnabled()) {
+        if (!userAuth.isEnabled()) {
             throw new EmailNotVerifiedException("This email has not been verified.\nPlease check your email for the verification link.");
         }
         String firstName = user.getFirstName();
@@ -237,7 +237,7 @@ public class UserServiceImpl implements UserService {
         UserAuthentication userAuth = userAuthenticationRepository.findByUserIdAndType(userId, AuthenticationType.LOCAL)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        if (!userAuth.getEnabled()) {
+        if (!userAuth.isEnabled()) {
             throw new EmailNotVerifiedException("This email has not been verified.\nPlease check your email for the verification link.");
         }
         String hashedPassword = BCrypt.hashpw(newPassword, BCrypt.gensalt());
@@ -272,7 +272,7 @@ public class UserServiceImpl implements UserService {
         UserAuthentication userAuth = userAuthenticationRepository.findByUserIdAndType(userId, AuthenticationType.LOCAL)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
 
-        if (!userAuth.getEnabled()) {
+        if (!userAuth.isEnabled()) {
             throw new EmailNotVerifiedException("This email has not been verified.\nPlease check your email for the verification link.");
         }
 
@@ -570,7 +570,7 @@ public class UserServiceImpl implements UserService {
         boolean hasOnlyLocalAuth = userAuths.size() == 1 &&
                                     userAuths.getFirst().getType() == AuthenticationType.LOCAL;
 
-        if (hasOnlyLocalAuth && !userAuths.getFirst().getEnabled()) {
+        if (hasOnlyLocalAuth && !userAuths.getFirst().isEnabled()) {
             throw new EmailNotVerifiedException("Email verification required to upload profile picture.");
         }
     }
