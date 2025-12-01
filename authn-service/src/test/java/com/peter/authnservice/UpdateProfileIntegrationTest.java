@@ -19,7 +19,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.security.crypto.bcrypt.BCrypt;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -60,6 +60,9 @@ public class UpdateProfileIntegrationTest {
     @Autowired
     private Flyway flyway;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     private final String firstName = "John";
     private final String lastName = "Doe";
     private final String testEmail = "test@example.com";
@@ -78,7 +81,7 @@ public class UpdateProfileIntegrationTest {
         AppUser testUser = new AppUser(testUserId, firstName, lastName, true);
         userRepository.save(testUser);
 
-        String hashedPassword = BCrypt.hashpw(testPassword, BCrypt.gensalt());
+        String hashedPassword = passwordEncoder.encode(testPassword);
         UserAuthentication userAuth = createLocalAuth(testUser, testEmail, hashedPassword);
         userAuthenticationRepository.save(userAuth);
 

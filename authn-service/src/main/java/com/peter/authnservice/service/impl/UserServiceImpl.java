@@ -25,7 +25,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.security.crypto.bcrypt.BCrypt;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +56,10 @@ public class UserServiceImpl implements UserService {
     private final FileStorageService fileStorageService;
     private final ImageProcessingService imageProcessingService;
     private final KafkaTopicConfig kafkaTopicConfig;
+    private final KafkaTemplate<String, Event> kafkaTemplate;
+    private final RestTemplate restTemplate;
+    private final PasswordEncoder passwordEncoder;
+
     @Value("${app-name}")
     private String appName;
     @Value("${jwt.verification.expiration}")
@@ -66,9 +70,6 @@ public class UserServiceImpl implements UserService {
     private String frontendUrl;
     @Value("${file.storage.presigned-url-expiration-hours:24}")
     private int presignedUrlExpirationHours;
-    private final KafkaTemplate<String, Event> kafkaTemplate;
-
-    private final RestTemplate restTemplate;
     @Value("${google.oauth2.client-id}")
     private String googleClientId;
     @Value("${google.oauth2.client-secret}")
@@ -81,7 +82,8 @@ public class UserServiceImpl implements UserService {
                            RestTemplate restTemplate,
                            FileStorageService fileStorageService,
                            ImageProcessingService imageProcessingService,
-                           KafkaTopicConfig kafkaTopicConfig) {
+                           KafkaTopicConfig kafkaTopicConfig,
+                           PasswordEncoder passwordEncoder) {
         this.userRepository = userRepository;
         this.userAuthenticationRepository = userAuthenticationRepository;
         this.jwtUtils = jwtUtils;
@@ -90,6 +92,7 @@ public class UserServiceImpl implements UserService {
         this.fileStorageService = fileStorageService;
         this.imageProcessingService = imageProcessingService;
         this.kafkaTopicConfig = kafkaTopicConfig;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Override
@@ -114,7 +117,7 @@ public class UserServiceImpl implements UserService {
                 )
         );
         kafkaTemplate.send(kafkaTopicConfig.userRegistration(), Event);
-        String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
+        String hashedPassword = passwordEncoder.encode(password);
         AppUser newUser = new AppUser(userId, firstName, lastName, true);
         userRepository.save(newUser);
         UserAuthentication userAuth = createLocalAuth(newUser, email, hashedPassword);
@@ -182,7 +185,7 @@ public class UserServiceImpl implements UserService {
         if (!userAuth.isEnabled()) {
             throw new EmailNotVerifiedException("This email has not been verified.\nPlease check your email for the verification link.");
         }
-        if (!BCrypt.checkpw(password, userAuth.getPassword())) {
+        if (!passwordEncoder.matches(password, userAuth.getPassword())) {
             throw new InvalidCredentialsException("Invalid credentials");
         }
 
@@ -240,7 +243,7 @@ public class UserServiceImpl implements UserService {
         if (!userAuth.isEnabled()) {
             throw new EmailNotVerifiedException("This email has not been verified.\nPlease check your email for the verification link.");
         }
-        String hashedPassword = BCrypt.hashpw(newPassword, BCrypt.gensalt());
+        String hashedPassword = passwordEncoder.encode(newPassword);
         userAuth.setPassword(hashedPassword);
         userAuthenticationRepository.save(userAuth);
         String firstName = user.getFirstName();
@@ -276,10 +279,10 @@ public class UserServiceImpl implements UserService {
             throw new EmailNotVerifiedException("This email has not been verified.\nPlease check your email for the verification link.");
         }
 
-        if (!BCrypt.checkpw(currentPassword, userAuth.getPassword())) {
+        if (!passwordEncoder.matches(currentPassword, userAuth.getPassword())) {
             throw new InvalidCredentialsException("Current password is incorrect");
         }
-        String hashedNewPassword = BCrypt.hashpw(newPassword, BCrypt.gensalt());
+        String hashedNewPassword = passwordEncoder.encode(newPassword);
         userAuth.setPassword(hashedNewPassword);
         userAuthenticationRepository.save(userAuth);
         String firstName = user.getFirstName();
