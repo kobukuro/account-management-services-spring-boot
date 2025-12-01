@@ -28,7 +28,7 @@ import org.springframework.http.MediaType;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
-import org.springframework.security.crypto.bcrypt.BCrypt;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -75,6 +75,9 @@ public class UserResetPasswordIntegrationTest {
 
     @Autowired
     private KafkaTopicConfig kafkaTopicConfig;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     private Consumer<String, Event> consumer;
 
@@ -235,7 +238,7 @@ public class UserResetPasswordIntegrationTest {
         AppUser user = new AppUser("John", "Doe", false);
         user = userRepository.save(user);
 
-        UserAuthentication userAuth = UserAuthentication.createLocalAuth(user, testEmail, BCrypt.hashpw(password, BCrypt.gensalt()));
+        UserAuthentication userAuth = UserAuthentication.createLocalAuth(user, testEmail, passwordEncoder.encode(password));
         userAuthenticationRepository.save(userAuth);
 
         PasswordResetRequest request = new PasswordResetRequest(testEmail);
@@ -298,7 +301,7 @@ public class UserResetPasswordIntegrationTest {
 
         // Verify password is updated
         UserAuthentication updatedUserAuth = userAuthenticationRepository.findByEmailAndType(testEmail, AuthenticationType.LOCAL).orElseThrow();
-        assertTrue(BCrypt.checkpw(newPassword, updatedUserAuth.getPassword()));
+        assertTrue(passwordEncoder.matches(newPassword, updatedUserAuth.getPassword()));
 
         // Verify Kafka event
         ConsumerRecords<String, Event> records = consumer.poll(Duration.ofSeconds(5));
@@ -358,7 +361,7 @@ public class UserResetPasswordIntegrationTest {
     void whenEmptyPasswordInConfirmation_thenReturns400() throws Exception {
         AppUser newUser = new AppUser(firstName, lastName, true);
         UUID userId = userRepository.save(newUser).getId();
-        UserAuthentication userAuth = createLocalAuth(newUser, testEmail, BCrypt.hashpw(password, BCrypt.gensalt()));
+        UserAuthentication userAuth = createLocalAuth(newUser, testEmail, passwordEncoder.encode(password));
         userAuthenticationRepository.save(userAuth);
         String resetToken = jwtUtils.generateResetPasswordToken(userId);
         PasswordResetConfirmRequest confirmRequest = new PasswordResetConfirmRequest(
@@ -549,7 +552,7 @@ public class UserResetPasswordIntegrationTest {
         AppUser user = new AppUser("John", "Doe", false);
         user = userRepository.save(user);
 
-        UserAuthentication userAuth = UserAuthentication.createLocalAuth(user, testEmail, BCrypt.hashpw(password, BCrypt.gensalt()));
+        UserAuthentication userAuth = UserAuthentication.createLocalAuth(user, testEmail, passwordEncoder.encode(password));
         userAuthenticationRepository.save(userAuth);
 
         String token = jwtUtils.generateResetPasswordToken(user.getId());

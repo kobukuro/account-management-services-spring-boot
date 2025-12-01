@@ -28,7 +28,7 @@ import org.springframework.http.MediaType;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
 import org.springframework.kafka.support.serializer.JsonDeserializer;
-import org.springframework.security.crypto.bcrypt.BCrypt;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -68,6 +68,9 @@ public class PasswordChangeIntegrationTest {
 
     @Autowired
     private KafkaTopicConfig kafkaTopicConfig;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     private Consumer<String, Event> consumer;
 
@@ -136,7 +139,7 @@ public class PasswordChangeIntegrationTest {
      * Helper method to create and save an activated user
      */
     private AppUser createActivatedUser() {
-        String hashedPassword = BCrypt.hashpw(currentPassword, BCrypt.gensalt());
+        String hashedPassword = passwordEncoder.encode(currentPassword);
 
         AppUser user = new AppUser(firstName, lastName, true);
         UserAuthentication userAuth = createLocalAuth(user, testEmail, hashedPassword);
@@ -172,8 +175,8 @@ public class PasswordChangeIntegrationTest {
 
         // Verify password was changed in database
         UserAuthentication userAuth = userAuthenticationRepository.findByUserIdAndType(user.getId(), AuthenticationType.LOCAL).orElseThrow();
-        assertTrue(BCrypt.checkpw(newPassword, userAuth.getPassword()));
-        assertFalse(BCrypt.checkpw(currentPassword, userAuth.getPassword()));
+        assertTrue(passwordEncoder.matches(newPassword, userAuth.getPassword()));
+        assertFalse(passwordEncoder.matches(currentPassword, userAuth.getPassword()));
 
         // Verify Kafka message was sent
         ConsumerRecords<String, Event> records = consumer.poll(Duration.ofSeconds(5));
@@ -209,8 +212,8 @@ public class PasswordChangeIntegrationTest {
 
         // Verify password was not changed
         UserAuthentication userAuth = userAuthenticationRepository.findByUserIdAndType(user.getId(), AuthenticationType.LOCAL).orElseThrow();
-        assertTrue(BCrypt.checkpw(currentPassword, userAuth.getPassword()));
-        assertFalse(BCrypt.checkpw(newPassword, userAuth.getPassword()));
+        assertTrue(passwordEncoder.matches(currentPassword, userAuth.getPassword()));
+        assertFalse(passwordEncoder.matches(newPassword, userAuth.getPassword()));
     }
 
     /**
@@ -423,7 +426,7 @@ public class PasswordChangeIntegrationTest {
 
         // Verify password was not changed
         UserAuthentication unchangedUserAuth = userAuthenticationRepository.findByUserIdAndType(user.getId(), AuthenticationType.LOCAL).orElseThrow();
-        assertTrue(BCrypt.checkpw(currentPassword, unchangedUserAuth.getPassword()));
+        assertTrue(passwordEncoder.matches(currentPassword, unchangedUserAuth.getPassword()));
     }
 
     /**
@@ -562,7 +565,7 @@ public class PasswordChangeIntegrationTest {
         AppUser disabledUser = new AppUser(firstName, lastName, false);
         disabledUser = userRepository.save(disabledUser);
 
-        String hashedPassword = BCrypt.hashpw(currentPassword, BCrypt.gensalt());
+        String hashedPassword = passwordEncoder.encode(currentPassword);
         UserAuthentication userAuth = createLocalAuth(disabledUser, testEmail, hashedPassword);
         userAuth.setEnabled(true);
         userAuthenticationRepository.save(userAuth);
@@ -583,7 +586,7 @@ public class PasswordChangeIntegrationTest {
      */
     @Test
     void whenUserEmailUnverified_thenChangePasswordFails() throws Exception {
-        String hashedPassword = BCrypt.hashpw(currentPassword, BCrypt.gensalt());
+        String hashedPassword = passwordEncoder.encode(currentPassword);
 
         AppUser user = new AppUser(firstName, lastName, true);
         UserAuthentication userAuth = createLocalAuth(user, testEmail, hashedPassword);

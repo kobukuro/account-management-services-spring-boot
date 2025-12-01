@@ -15,7 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
-import org.springframework.security.crypto.bcrypt.BCrypt;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -54,6 +54,9 @@ public class UserLoginIntegrationTest {
 
     @Autowired
     private Flyway flyway;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     private final String firstName = "John";
     private final String lastName = "Doe";
@@ -169,7 +172,7 @@ public class UserLoginIntegrationTest {
         AppUser user = new AppUser("John", "Doe", false);
         user = userRepository.save(user);
 
-        UserAuthentication userAuth = UserAuthentication.createLocalAuth(user, email, BCrypt.hashpw(password, BCrypt.gensalt()));
+        UserAuthentication userAuth = UserAuthentication.createLocalAuth(user, email, passwordEncoder.encode(password));
         userAuthRepository.save(userAuth);
 
         UserLoginRequest loginRequest = new UserLoginRequest(email, password);
@@ -320,7 +323,7 @@ public class UserLoginIntegrationTest {
         UserAuthentication userAuth = UserAuthentication.createLocalAuth(
                 user,
                 email,
-                BCrypt.hashpw(password, BCrypt.gensalt())
+                passwordEncoder.encode(password)
         );
         userAuthRepository.save(userAuth);
 
