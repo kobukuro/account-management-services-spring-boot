@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class JwtUtilsTest {
 
     private JwtUtils jwtUtils;
+    // Test secret must be at least 32 characters long for HMAC256 (this is 58 characters)
     private final String testSecret = "test-secret-key-for-jwt-token-generation-and-validation";
     private final long verificationTokenExpiration = 3600000L; // 1 hour
     private final long accessTokenExpiration = 900000L; // 15 minutes
@@ -34,7 +35,69 @@ class JwtUtilsTest {
         ReflectionTestUtils.setField(jwtUtils, "accessTokenExpiration", accessTokenExpiration);
         ReflectionTestUtils.setField(jwtUtils, "refreshTokenExpiration", refreshTokenExpiration);
         ReflectionTestUtils.setField(jwtUtils, "resetPasswordTokenExpiration", resetPasswordTokenExpiration);
-        jwtUtils.init();
+    }
+
+    // ==================== INIT METHOD TESTS ====================
+
+    @Test
+    void init_withValidSecret_shouldInitializeSuccessfully() {
+        assertDoesNotThrow(() -> jwtUtils.init());
+    }
+
+    @Test
+    void init_withNullSecret_shouldThrowIllegalArgumentException() {
+        ReflectionTestUtils.setField(jwtUtils, "secret", null);
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> jwtUtils.init()
+        );
+
+        assertEquals("JWT secret key must not be null or empty.", exception.getMessage());
+    }
+
+    @Test
+    void init_withEmptySecret_shouldThrowIllegalArgumentException() {
+        ReflectionTestUtils.setField(jwtUtils, "secret", "");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> jwtUtils.init()
+        );
+
+        assertEquals("JWT secret key must not be null or empty.", exception.getMessage());
+    }
+
+    @Test
+    void init_withWhitespaceSecret_shouldThrowIllegalArgumentException() {
+        ReflectionTestUtils.setField(jwtUtils, "secret", "   ");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> jwtUtils.init()
+        );
+
+        assertEquals("JWT secret key must not be null or empty.", exception.getMessage());
+    }
+
+    @Test
+    void init_withSecretLessThan32Characters_shouldThrowIllegalArgumentException() {
+        ReflectionTestUtils.setField(jwtUtils, "secret", "shortSecret");
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> jwtUtils.init()
+        );
+
+        assertTrue(exception.getMessage().contains("must be at least 32 characters long for HMAC256"));
+    }
+
+    @Test
+    void init_withSecretExactly32Characters_shouldInitializeSuccessfully() {
+        String secretWith32Chars = "12345678901234567890123456789012"; // exactly 32 characters
+        ReflectionTestUtils.setField(jwtUtils, "secret", secretWith32Chars);
+
+        assertDoesNotThrow(() -> jwtUtils.init());
     }
 
     // ==================== TOKEN GENERATION TESTS ====================
@@ -44,6 +107,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenGenerateVerificationToken_thenTokenIsValid() {
+        jwtUtils.init();
         String token = jwtUtils.generateVerificationToken(testUserId);
 
         assertNotNull(token);
@@ -56,6 +120,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenGenerateAccessToken_thenTokenIsValid() {
+        jwtUtils.init();
         String token = jwtUtils.generateAccessToken(testUserId);
 
         assertNotNull(token);
@@ -68,6 +133,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenGenerateRefreshToken_thenTokenIsValid() {
+        jwtUtils.init();
         String token = jwtUtils.generateRefreshToken(testUserId);
 
         assertNotNull(token);
@@ -80,6 +146,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenGenerateResetPasswordToken_thenTokenIsValid() {
+        jwtUtils.init();
         String token = jwtUtils.generateResetPasswordToken(testUserId);
 
         assertNotNull(token);
@@ -92,6 +159,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenGenerateTokensForDifferentUsers_thenTokensAreDifferent() {
+        jwtUtils.init();
         UUID userId1 = UUID.randomUUID();
         UUID userId2 = UUID.randomUUID();
 
@@ -110,6 +178,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenValidToken_thenValidateReturnsTrue() {
+        jwtUtils.init();
         String token = jwtUtils.generateAccessToken(testUserId);
         assertTrue(jwtUtils.validateToken(token));
     }
@@ -119,6 +188,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenNullToken_thenValidateReturnsFalse() {
+        jwtUtils.init();
         assertFalse(jwtUtils.validateToken(null));
     }
 
@@ -127,6 +197,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenEmptyToken_thenValidateReturnsFalse() {
+        jwtUtils.init();
         assertFalse(jwtUtils.validateToken(""));
     }
 
@@ -135,6 +206,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenMalformedToken_thenValidateReturnsFalse() {
+        jwtUtils.init();
         assertFalse(jwtUtils.validateToken("this-is-not-a-valid-jwt-token"));
     }
 
@@ -143,6 +215,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenTokenWithWrongSignature_thenValidateReturnsFalse() {
+        jwtUtils.init();
         // Create token with different secret
         Algorithm wrongAlgorithm = Algorithm.HMAC256("wrong-secret");
         String tokenWithWrongSignature = JWT.create()
@@ -159,6 +232,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenExpiredToken_thenValidateReturnsFalse() {
+        jwtUtils.init();
         Algorithm algorithm = Algorithm.HMAC256(testSecret);
         Date past = new Date(System.currentTimeMillis() - 10000); // 10 seconds ago
         String expiredToken = JWT.create()
@@ -177,6 +251,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenValidToken_thenExtractCorrectUserId() {
+        jwtUtils.init();
         String token = jwtUtils.generateAccessToken(testUserId);
         UUID extractedUserId = jwtUtils.getUserIdFromToken(token);
 
@@ -188,6 +263,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenNullToken_thenGetUserIdThrowsException() {
+        jwtUtils.init();
         Exception exception = assertThrows(IllegalArgumentException.class, () -> jwtUtils.getUserIdFromToken(null));
         assertEquals("Token cannot be null or empty", exception.getMessage());
     }
@@ -197,6 +273,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenEmptyToken_thenGetUserIdThrowsException() {
+        jwtUtils.init();
         Exception exception = assertThrows(IllegalArgumentException.class, () -> jwtUtils.getUserIdFromToken(""));
         assertEquals("Token cannot be null or empty", exception.getMessage());
     }
@@ -206,6 +283,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenInvalidToken_thenGetUserIdThrowsException() {
+        jwtUtils.init();
         Exception exception = assertThrows(IllegalArgumentException.class, () -> jwtUtils.getUserIdFromToken("invalid-token"));
         assertEquals("Invalid token", exception.getMessage());
     }
@@ -215,6 +293,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenTokenWithInvalidUserIdFormat_thenGetUserIdThrowsException() {
+        jwtUtils.init();
         Algorithm algorithm = Algorithm.HMAC256(testSecret);
         String tokenWithInvalidUserId = JWT.create()
                 .withSubject("not-a-valid-uuid")
@@ -231,6 +310,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenTokenWithNullSubject_thenGetUserIdReturnsNull() {
+        jwtUtils.init();
         Algorithm algorithm = Algorithm.HMAC256(testSecret);
         String tokenWithNullSubject = JWT.create()
                 .withIssuedAt(new Date())
@@ -246,6 +326,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenExpiredToken_thenGetUserIdThrowsException() {
+        jwtUtils.init();
         Algorithm algorithm = Algorithm.HMAC256(testSecret);
         Date past = new Date(System.currentTimeMillis() - 10000);
         String expiredToken = JWT.create()
@@ -265,6 +346,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenTokenGenerated_thenSubjectMatchesUserId() {
+        jwtUtils.init();
         String token = jwtUtils.generateAccessToken(testUserId);
         UUID extractedUserId = jwtUtils.getUserIdFromToken(token);
 
@@ -276,6 +358,7 @@ class JwtUtilsTest {
      */
     @Test
     void whenMultipleTokensGeneratedForSameUser_thenAllAreValid() {
+        jwtUtils.init();
         String token1 = jwtUtils.generateAccessToken(testUserId);
         String token2 = jwtUtils.generateAccessToken(testUserId);
         String token3 = jwtUtils.generateAccessToken(testUserId);

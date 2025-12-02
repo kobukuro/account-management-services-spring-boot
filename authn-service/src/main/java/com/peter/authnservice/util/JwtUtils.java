@@ -14,6 +14,12 @@ import java.util.UUID;
 
 @Component
 public class JwtUtils {
+    /**
+     * Minimum secret key length for HMAC256.
+     * HMAC256 uses SHA-256 which requires a 256-bit (32-byte) key for optimal security.
+     */
+    private static final int MINIMUM_SECRET_LENGTH = 32;
+
     @Value("${secret-key}")
     private String secret;
 
@@ -46,6 +52,15 @@ public class JwtUtils {
      */
     @PostConstruct
     public void init() {
+        if (secret == null || secret.trim().isEmpty()) {
+            throw new IllegalArgumentException("JWT secret key must not be null or empty.");
+        }
+        if (secret.length() < MINIMUM_SECRET_LENGTH) {
+            throw new IllegalArgumentException(
+                    "JWT secret key must be at least " + MINIMUM_SECRET_LENGTH +
+                    " characters long for HMAC256."
+            );
+        }
         algorithm = Algorithm.HMAC256(secret);
         verifier = JWT.require(algorithm).build();
     }
