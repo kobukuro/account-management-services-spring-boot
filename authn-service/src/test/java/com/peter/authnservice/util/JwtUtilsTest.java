@@ -217,7 +217,7 @@ class JwtUtilsTest {
     void whenTokenWithWrongSignature_thenValidateReturnsFalse() {
         jwtUtils.init();
         // Create token with different secret
-        Algorithm wrongAlgorithm = Algorithm.HMAC256("wrong-secret");
+        Algorithm wrongAlgorithm = Algorithm.HMAC256("wrong-secret-key-for-testing-jwt-validation-purposes");
         String tokenWithWrongSignature = JWT.create()
                 .withSubject(testUserId.toString())
                 .withIssuedAt(new Date())
