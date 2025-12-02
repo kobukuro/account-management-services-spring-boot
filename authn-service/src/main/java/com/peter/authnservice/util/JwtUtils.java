@@ -16,7 +16,7 @@ import java.util.UUID;
 public class JwtUtils {
     /**
      * Minimum secret key length for HMAC256.
-     * HMAC256 uses SHA-256 which requires a 256-bit (32-byte) key for optimal security.
+     * For optimal security with HMAC256, the key should be at least 32 bytes (256 bits) as recommended by RFC 2104.
      */
     private static final int MINIMUM_SECRET_LENGTH = 32;
 
