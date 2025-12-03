@@ -77,7 +77,7 @@ jobs:
             echo "=== Containers Status ==="
             docker ps -a
             echo "=== Kafka Container Logs ==="
-            docker logs kafka
+            docker compose -f docker-compose-ci.yml logs kafka
             exit 1
           fi
 
