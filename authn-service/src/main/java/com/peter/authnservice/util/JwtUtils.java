@@ -120,4 +120,30 @@ public class JwtUtils {
             throw new IllegalArgumentException("Invalid user ID in token", e);
         }
     }
+
+    /**
+     * Verifies the token and extracts the user ID in a single operation.
+     *
+     * @param token the JWT token to verify
+     * @return the user ID extracted from the verified token
+     * @throws JWTVerificationException if the token is invalid, expired, malformed, or contains an invalid user ID
+     */
+    public UUID verifyAndGetUserId(String token) {
+        if (token == null || token.isEmpty()) {
+            throw new JWTVerificationException("Token cannot be null or empty");
+        }
+
+        try {
+            DecodedJWT jwt = verifier.verify(token);
+            String subject = jwt.getSubject();
+
+            if (subject == null) {
+                throw new JWTVerificationException("Token subject is null");
+            }
+
+            return UUID.fromString(subject);
+        } catch (IllegalArgumentException e) {
+            throw new JWTVerificationException("Invalid user ID in token", e);
+        }
+    }
 }

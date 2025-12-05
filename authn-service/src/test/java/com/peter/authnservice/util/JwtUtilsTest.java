@@ -2,6 +2,7 @@ package com.peter.authnservice.util;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -370,5 +371,124 @@ class JwtUtilsTest {
         assertEquals(testUserId, jwtUtils.getUserIdFromToken(token1));
         assertEquals(testUserId, jwtUtils.getUserIdFromToken(token2));
         assertEquals(testUserId, jwtUtils.getUserIdFromToken(token3));
+    }
+
+    /**
+     * Test verifyAndGetUserId with valid token
+     */
+    @Test
+    void verifyAndGetUserId_withValidToken_shouldReturnUserId() {
+        jwtUtils.init();
+        UUID userId = UUID.randomUUID();
+        String validToken = jwtUtils.generateVerificationToken(userId);
+
+        UUID extractedUserId = jwtUtils.verifyAndGetUserId(validToken);
+
+        assertEquals(userId, extractedUserId);
+    }
+
+    /**
+     * Test verifyAndGetUserId with invalid token
+     */
+    @Test
+    void verifyAndGetUserId_withInvalidToken_shouldThrowException() {
+        jwtUtils.init();
+        String invalidToken = "invalid.token.here";
+
+        assertThrows(Exception.class, () -> jwtUtils.verifyAndGetUserId(invalidToken));
+    }
+
+    /**
+     * Test verifyAndGetUserId with token containing non-numeric user ID
+     */
+    @Test
+    void verifyAndGetUserId_withNonNumericUserId_shouldThrowJWTVerificationException() {
+        jwtUtils.init();
+
+        // Create a token with a non-numeric subject claim
+        String tokenWithNonNumericSubject = JWT.create()
+                .withSubject("not-a-number")
+                .withIssuedAt(new Date())
+                .withExpiresAt(new Date(System.currentTimeMillis() + verificationTokenExpiration))
+                .sign(Algorithm.HMAC256(testSecret));
+
+        Exception exception = assertThrows(
+                JWTVerificationException.class,
+                () -> jwtUtils.verifyAndGetUserId(tokenWithNonNumericSubject)
+        );
+
+        assertEquals("Invalid user ID in token", exception.getMessage());
+    }
+
+    /**
+     * Test verifyAndGetUserId with null token
+     */
+    @Test
+    void verifyAndGetUserId_withNullToken_shouldThrowJWTVerificationException() {
+        jwtUtils.init();
+
+        Exception exception = assertThrows(
+                JWTVerificationException.class,
+                () -> jwtUtils.verifyAndGetUserId(null)
+        );
+
+        assertEquals("Token cannot be null or empty", exception.getMessage());
+    }
+
+    /**
+     * Test verifyAndGetUserId with empty token
+     */
+    @Test
+    void verifyAndGetUserId_withEmptyToken_shouldThrowJWTVerificationException() {
+        jwtUtils.init();
+
+        Exception exception = assertThrows(
+                JWTVerificationException.class,
+                () -> jwtUtils.verifyAndGetUserId("")
+        );
+
+        assertEquals("Token cannot be null or empty", exception.getMessage());
+    }
+
+    /**
+     * Test verifyAndGetUserId with token containing null subject
+     */
+    @Test
+    void verifyAndGetUserId_withNullSubject_shouldThrowJWTVerificationException() {
+        jwtUtils.init();
+
+        // Create a token without a subject claim
+        String tokenWithNullSubject = JWT.create()
+                .withIssuedAt(new Date())
+                .withExpiresAt(new Date(System.currentTimeMillis() + verificationTokenExpiration))
+                .sign(Algorithm.HMAC256(testSecret));
+
+        Exception exception = assertThrows(
+                JWTVerificationException.class,
+                () -> jwtUtils.verifyAndGetUserId(tokenWithNullSubject)
+        );
+
+        assertEquals("Token subject is null", exception.getMessage());
+    }
+
+    /**
+     * Test verifyAndGetUserId with expired token
+     */
+    @Test
+    void verifyAndGetUserId_withExpiredToken_shouldThrowJWTVerificationException() {
+        jwtUtils.init();
+
+        // Create an expired token
+        Date past = new Date(System.currentTimeMillis() - 10000); // 10 seconds ago
+        String expiredToken = JWT.create()
+                .withSubject(testUserId.toString())
+                .withIssuedAt(new Date(System.currentTimeMillis() - 20000))
+                .withExpiresAt(past)
+                .sign(Algorithm.HMAC256(testSecret));
+
+        assertThrows(
+                JWTVerificationException.class,
+                () -> jwtUtils.verifyAndGetUserId(expiredToken)
+        );
     }
 }
