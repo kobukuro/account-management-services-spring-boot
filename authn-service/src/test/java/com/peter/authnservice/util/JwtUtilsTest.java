@@ -371,4 +371,123 @@ class JwtUtilsTest {
         assertEquals(testUserId, jwtUtils.getUserIdFromToken(token2));
         assertEquals(testUserId, jwtUtils.getUserIdFromToken(token3));
     }
+
+    /**
+     * Test verifyAndGetUserId with valid token
+     */
+    @Test
+    void verifyAndGetUserId_withValidToken_shouldReturnUserId() {
+        jwtUtils.init();
+        UUID userId = UUID.randomUUID();
+        String validToken = jwtUtils.generateVerificationToken(userId);
+
+        UUID extractedUserId = jwtUtils.verifyAndGetUserId(validToken);
+
+        assertEquals(userId, extractedUserId);
+    }
+
+    /**
+     * Test verifyAndGetUserId with invalid token
+     */
+    @Test
+    void verifyAndGetUserId_withInvalidToken_shouldThrowException() {
+        jwtUtils.init();
+        String invalidToken = "invalid.token.here";
+
+        assertThrows(Exception.class, () -> jwtUtils.verifyAndGetUserId(invalidToken));
+    }
+
+    /**
+     * Test verifyAndGetUserId with token containing non-numeric user ID
+     */
+    @Test
+    void verifyAndGetUserId_withNonNumericUserId_shouldThrowJWTVerificationException() {
+        jwtUtils.init();
+
+        // Create a token with a non-numeric subject claim
+        String tokenWithNonNumericSubject = JWT.create()
+                .withSubject("not-a-number")
+                .withIssuedAt(new Date())
+                .withExpiresAt(new Date(System.currentTimeMillis() + verificationTokenExpiration))
+                .sign(Algorithm.HMAC256(testSecret));
+
+        Exception exception = assertThrows(
+                Exception.class,
+                () -> jwtUtils.verifyAndGetUserId(tokenWithNonNumericSubject)
+        );
+
+        assertTrue(exception.getMessage().contains("Invalid user ID in token"));
+    }
+
+    /**
+     * Test verifyAndGetUserId with null token
+     */
+    @Test
+    void verifyAndGetUserId_withNullToken_shouldThrowJWTVerificationException() {
+        jwtUtils.init();
+
+        Exception exception = assertThrows(
+                Exception.class,
+                () -> jwtUtils.verifyAndGetUserId(null)
+        );
+
+        assertTrue(exception.getMessage().contains("Token cannot be null or empty"));
+    }
+
+    /**
+     * Test verifyAndGetUserId with empty token
+     */
+    @Test
+    void verifyAndGetUserId_withEmptyToken_shouldThrowJWTVerificationException() {
+        jwtUtils.init();
+
+        Exception exception = assertThrows(
+                Exception.class,
+                () -> jwtUtils.verifyAndGetUserId("")
+        );
+
+        assertTrue(exception.getMessage().contains("Token cannot be null or empty"));
+    }
+
+    /**
+     * Test verifyAndGetUserId with token containing null subject
+     */
+    @Test
+    void verifyAndGetUserId_withNullSubject_shouldThrowJWTVerificationException() {
+        jwtUtils.init();
+
+        // Create a token without a subject claim
+        String tokenWithNullSubject = JWT.create()
+                .withIssuedAt(new Date())
+                .withExpiresAt(new Date(System.currentTimeMillis() + verificationTokenExpiration))
+                .sign(Algorithm.HMAC256(testSecret));
+
+        Exception exception = assertThrows(
+                Exception.class,
+                () -> jwtUtils.verifyAndGetUserId(tokenWithNullSubject)
+        );
+
+        assertTrue(exception.getMessage().contains("Token subject is null"));
+    }
+
+    /**
+     * Test verifyAndGetUserId with expired token
+     */
+    @Test
+    void verifyAndGetUserId_withExpiredToken_shouldThrowJWTVerificationException() {
+        jwtUtils.init();
+
+        // Create an expired token
+        Date past = new Date(System.currentTimeMillis() - 10000); // 10 seconds ago
+        String expiredToken = JWT.create()
+                .withSubject(testUserId.toString())
+                .withIssuedAt(new Date(System.currentTimeMillis() - 20000))
+                .withExpiresAt(past)
+                .sign(Algorithm.HMAC256(testSecret));
+
+        assertThrows(
+                Exception.class,
+                () -> jwtUtils.verifyAndGetUserId(expiredToken)
+        );
+    }
 }

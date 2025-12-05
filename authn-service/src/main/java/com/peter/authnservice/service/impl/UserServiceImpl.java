@@ -1,5 +1,6 @@
 package com.peter.authnservice.service.impl;
 
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -128,10 +129,12 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public void activateAccount(String token) {
-        if (!jwtUtils.validateToken(token)) {
+        UUID userId;
+        try {
+            userId = jwtUtils.verifyAndGetUserId(token);
+        } catch (JWTVerificationException e) {
             throw new TokenNotValidException("Invalid or expired verification token");
         }
-        UUID userId = jwtUtils.getUserIdFromToken(token);
 
         UserAuthentication userAuth = userAuthenticationRepository.findByUserIdAndType(userId, AuthenticationType.LOCAL)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
