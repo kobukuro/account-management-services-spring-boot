@@ -2,6 +2,7 @@ package com.peter.authnservice.util;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.auth0.jwt.exceptions.JWTVerificationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -412,11 +413,11 @@ class JwtUtilsTest {
                 .sign(Algorithm.HMAC256(testSecret));
 
         Exception exception = assertThrows(
-                Exception.class,
+                JWTVerificationException.class,
                 () -> jwtUtils.verifyAndGetUserId(tokenWithNonNumericSubject)
         );
 
-        assertTrue(exception.getMessage().contains("Invalid user ID in token"));
+        assertEquals("Invalid user ID in token", exception.getMessage());
     }
 
     /**
@@ -427,11 +428,11 @@ class JwtUtilsTest {
         jwtUtils.init();
 
         Exception exception = assertThrows(
-                Exception.class,
+                JWTVerificationException.class,
                 () -> jwtUtils.verifyAndGetUserId(null)
         );
 
-        assertTrue(exception.getMessage().contains("Token cannot be null or empty"));
+        assertEquals("Token cannot be null or empty", exception.getMessage());
     }
 
     /**
@@ -442,11 +443,11 @@ class JwtUtilsTest {
         jwtUtils.init();
 
         Exception exception = assertThrows(
-                Exception.class,
+                JWTVerificationException.class,
                 () -> jwtUtils.verifyAndGetUserId("")
         );
 
-        assertTrue(exception.getMessage().contains("Token cannot be null or empty"));
+        assertEquals("Token cannot be null or empty", exception.getMessage());
     }
 
     /**
@@ -463,11 +464,11 @@ class JwtUtilsTest {
                 .sign(Algorithm.HMAC256(testSecret));
 
         Exception exception = assertThrows(
-                Exception.class,
+                JWTVerificationException.class,
                 () -> jwtUtils.verifyAndGetUserId(tokenWithNullSubject)
         );
 
-        assertTrue(exception.getMessage().contains("Token subject is null"));
+        assertEquals("Token subject is null", exception.getMessage());
     }
 
     /**
@@ -486,7 +487,7 @@ class JwtUtilsTest {
                 .sign(Algorithm.HMAC256(testSecret));
 
         assertThrows(
-                Exception.class,
+                JWTVerificationException.class,
                 () -> jwtUtils.verifyAndGetUserId(expiredToken)
         );
     }
