@@ -38,6 +38,6 @@ public class NotificationEventConsumer {
 
     @DltHandler
     public void listenDLT(Event event, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic, @Header(KafkaHeaders.OFFSET) long offset) throws JsonProcessingException {
-        log.info("DLT Received : {} , from {} , offset {}", objectMapper.writeValueAsString(event), topic, offset);
+        log.info("DLT Received: {} from {} offset {}", objectMapper.writeValueAsString(event), topic, offset);
     }
 }
