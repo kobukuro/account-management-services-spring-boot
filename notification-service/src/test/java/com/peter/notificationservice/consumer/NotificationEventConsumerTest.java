@@ -75,13 +75,12 @@ class NotificationEventConsumerTest {
 
         when(objectMapper.writeValueAsString(event)).thenThrow(exception);
 
-        // When/Then
-        assertThrows(JsonProcessingException.class, () ->
-                consumer.handleNotification(event, topic, offset)
-        );
+        // When
+        consumer.handleNotification(event, topic, offset);
 
+        // Then
         verify(objectMapper).writeValueAsString(event);
-        verify(notificationService, never()).processNotification(event);
+        verify(notificationService).processNotification(event);
     }
 
     @Test
@@ -132,11 +131,10 @@ class NotificationEventConsumerTest {
 
         when(objectMapper.writeValueAsString(event)).thenThrow(exception);
 
-        // When/Then
-        assertThrows(JsonProcessingException.class, () ->
-                consumer.listenDLT(event, topic, offset)
-        );
+        // When
+        consumer.listenDLT(event, topic, offset);
 
+        // Then
         verify(objectMapper).writeValueAsString(event);
         verifyNoInteractions(notificationService);
     }
