@@ -62,13 +62,27 @@ public class NotificationEventConsumer {
             "${kafka.topics.password-reset-confirm}",
             "${kafka.topics.password-change}"
     })
-    public void handleNotification(Event event, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic, @Header(KafkaHeaders.OFFSET) long offset) throws JsonProcessingException {
-        log.info("Received: {} from {} offset {}", objectMapper.writeValueAsString(event), topic, offset);
+    public void handleNotification(Event event, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic, @Header(KafkaHeaders.OFFSET) long offset) {
+        String eventJson;
+        try {
+            eventJson = objectMapper.writeValueAsString(event);
+        } catch (JsonProcessingException e) {
+            eventJson = "<serialization failed>";
+            log.warn("Failed to serialize event for logging", e);
+        }
+        log.info("Received: {} from {} offset {}", eventJson, topic, offset);
         notificationService.processNotification(event);
     }
 
     @DltHandler
-    public void listenDLT(Event event, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic, @Header(KafkaHeaders.OFFSET) long offset) throws JsonProcessingException {
-        log.info("DLT Received: {} from {} offset {}", objectMapper.writeValueAsString(event), topic, offset);
+    public void listenDLT(Event event, @Header(KafkaHeaders.RECEIVED_TOPIC) String topic, @Header(KafkaHeaders.OFFSET) long offset) {
+        String eventJson;
+        try {
+            eventJson = objectMapper.writeValueAsString(event);
+        } catch (JsonProcessingException e) {
+            eventJson = "<serialization failed>";
+            log.warn("Failed to serialize event for logging", e);
+        }
+        log.info("DLT Received: {} from {} offset {}", eventJson, topic, offset);
     }
 }
