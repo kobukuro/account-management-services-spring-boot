@@ -609,7 +609,7 @@ public class GoogleOAuthLoginIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isForbidden())
-                .andReturn();
+                .andExpect(jsonPath("$.message").value("User account is disabled."));
     }
 
     // Helper methods for mocking Google API responses
