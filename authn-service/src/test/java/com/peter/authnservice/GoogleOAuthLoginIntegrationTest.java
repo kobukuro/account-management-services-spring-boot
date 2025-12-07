@@ -583,6 +583,32 @@ public class GoogleOAuthLoginIntegrationTest {
                 .andExpect(status().isInternalServerError());
     }
 
+    @Test
+    void whenValidAuthCodeAndExistingUserButDisabledAccount_thenReturns403() throws Exception {
+        // Create existing user
+        UUID existingUserId = UUID.randomUUID();
+        AppUser existingUser = new AppUser(existingUserId, firstName, lastName, false);
+        userRepository.save(existingUser);
+
+        UserAuthentication existingAuth = UserAuthentication.createOAuthAuth(
+                existingUser, AuthenticationType.GOOGLE, googleUserId, email);
+        userAuthenticationRepository.save(existingAuth);
+
+        // Mock Google token exchange
+        mockGoogleTokenExchange();
+
+        // Mock Google user info
+        mockGoogleUserInfo();
+
+        GoogleOAuthLoginRequest request = new GoogleOAuthLoginRequest(authorizationCode, redirectUri);
+
+        mockMvc.perform(post(GOOGLE_OAUTH_LOGIN_API_PATH)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden())
+                .andReturn();
+    }
+
     // Helper methods for mocking Google API responses
 
     private void mockGoogleTokenExchange() {
