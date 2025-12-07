@@ -333,8 +333,13 @@ public class UserServiceImpl implements UserService {
             Optional<UserAuthentication> existingGoogleAuth = userAuthenticationRepository
                     .findByProviderIdAndType(googleUserInfo.getId(), AuthenticationType.GOOGLE);
             UserAuthentication googleAuth;
+            AppUser user;
             if (existingGoogleAuth.isPresent()) {
                 googleAuth = existingGoogleAuth.get();
+                user = googleAuth.getUser();
+                if (!user.isEnabled()) {
+                    throw new UserAccountDisabledException("User account is disabled.");
+                }
                 String latestEmail = googleUserInfo.getEmail();
                 // Update email if it has changed
                 if (!googleAuth.getEmail().equals(latestEmail)) {
@@ -345,16 +350,16 @@ public class UserServiceImpl implements UserService {
                 UUID userId = UUID.randomUUID();
                 String firstName = googleUserInfo.getGivenName();
                 String lastName = googleUserInfo.getFamilyName();
-                AppUser newUser = new AppUser(userId, firstName, lastName, true);
-                userRepository.save(newUser);
-                googleAuth = createOAuthAuth(newUser, AuthenticationType.GOOGLE, googleUserInfo.getId(), googleUserInfo.getEmail());
+                user = new AppUser(userId, firstName, lastName, true);
+                userRepository.save(user);
+                googleAuth = createOAuthAuth(user, AuthenticationType.GOOGLE, googleUserInfo.getId(), googleUserInfo.getEmail());
                 userAuthenticationRepository.save(googleAuth);
             }
-            UUID userId = googleAuth.getUser().getId();
+            UUID userId = user.getId();
             String accessToken = jwtUtils.generateAccessToken(userId);
             String refreshToken = jwtUtils.generateRefreshToken(userId);
             return new TokenPair(accessToken, refreshToken);
-        } catch (InvalidAuthorizationCodeException | MismatchRedirectUriException e) {
+        } catch (InvalidAuthorizationCodeException | MismatchRedirectUriException | UserAccountDisabledException e) {
             throw e; // Rethrow the custom exception
         } catch (Exception e) {
             throw new OAuthException("Google OAuth login failed due to unexpected error");
