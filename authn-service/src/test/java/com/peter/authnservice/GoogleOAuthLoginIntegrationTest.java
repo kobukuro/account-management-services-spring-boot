@@ -583,6 +583,9 @@ public class GoogleOAuthLoginIntegrationTest {
                 .andExpect(status().isInternalServerError());
     }
 
+    /**
+     * Test Google OAuth login for existing user with disabled account
+     */
     @Test
     void whenValidAuthCodeAndExistingUserButDisabledAccount_thenReturns403() throws Exception {
         // Create existing user
