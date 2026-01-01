@@ -41,6 +41,14 @@
                 <artifactId>commons-beanutils</artifactId>
                 <version>1.11.0</version>
             </dependency>
+            <!-- Override jose4j to fix CVE-2024-29371 (DoS in JWE token decompression) -->
+            <!-- Transitive dependency from spring-kafka-test -> kafka_2.13 -> jose4j -->
+            <!-- Fixed in 0.9.5+, upgrading to 0.9.6, previously using vulnerable 0.9.4 -->
+            <dependency>
+                <groupId>org.bitbucket.b_c</groupId>
+                <artifactId>jose4j</artifactId>
+                <version>0.9.6</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <dependencies>
@@ -55,6 +63,20 @@
         <dependency>
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka</artifactId>
+            <exclusions>
+                <!-- Exclude vulnerable lz4-java 1.8.0 to fix CVE-2025-66566 -->
+                <exclusion>
+                    <groupId>org.lz4</groupId>
+                    <artifactId>lz4-java</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <!-- Add fixed lz4-java version under new group ID to replace excluded vulnerable version -->
+        <!-- Fixes CVE-2025-66566 (information leak in safe decompressor) -->
+        <dependency>
+            <groupId>at.yawk.lz4</groupId>
+            <artifactId>lz4-java</artifactId>
+            <version>1.10.1</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -78,6 +100,13 @@
             <groupId>org.springframework.kafka</groupId>
             <artifactId>spring-kafka-test</artifactId>
             <scope>test</scope>
+            <exclusions>
+                <!-- Exclude vulnerable lz4-java 1.8.0 to fix CVE-2025-66566 -->
+                <exclusion>
+                    <groupId>org.lz4</groupId>
+                    <artifactId>lz4-java</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 
