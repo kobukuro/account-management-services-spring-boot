@@ -64,7 +64,7 @@ class GatewayRoutingIntegrationTest {
     }
 
     @Test
-    void shouldRouteGetRequestToActivationEndpoint() throws InterruptedException {
+    void shouldRoutePostRequestToActivationEndpoint() throws InterruptedException {
         // Given
         String expectedResponse = "{\"message\":\"Account activated\"}";
         mockBackendServer.enqueue(new MockResponse()
